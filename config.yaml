@@ -328,9 +328,9 @@ context:
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
-  provider: ''
+  memory_char_limit: 10000
+  user_char_limit: 5000
+  provider: holographic
   nudge_interval: 10
   flush_min_turns: 6
   curator:
@@ -413,7 +413,9 @@ approvals:
   mcp_reload_confirm: true
   destructive_slash_confirm: true
 command_allowlist:
+- script execution via -e/-c flag
 - recursive delete
+- script execution via heredoc
 quick_commands: {}
 hooks: {}
 hooks_auto_accept: false
@@ -529,31 +531,23 @@ custom_providers:
   model: mimo-v2.5-pro
 mcp_servers:
   memory:
-    command: npx
-    args:
-    - -y
-    - '@modelcontextprotocol/server-memory'
     enabled: true
+    command: node
+    args:
+    - /home/lzy/miniconda3/lib/node_modules/@modelcontextprotocol/server-memory/dist/index.js
   sequential-thinking:
-    command: npx
-    args:
-    - -y
-    - '@modelcontextprotocol/server-sequential-thinking'
     enabled: true
-  time:
-    command: npx
+    command: node
     args:
-    - -y
-    - '@modelcontextprotocol/server-time'
-    enabled: true
+    - /home/lzy/miniconda3/lib/node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js
   fetch:
-    command: uvx
-    args:
-    - mcp-server-fetch
     enabled: true
+    command: python
+    args:
+    - -m
+    - mcp_server_fetch
   context7:
-    command: npx
-    args:
-    - -y
-    - '@upstash/context7-mcp'
     enabled: true
+    command: node
+    args:
+    - /home/lzy/miniconda3/lib/node_modules/@upstash/context7-mcp/dist/index.js

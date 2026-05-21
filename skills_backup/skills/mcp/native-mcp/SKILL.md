@@ -29,8 +29,9 @@ For ad-hoc, one-off MCP tool calls from the terminal without configuring anythin
 ## Prerequisites
 
 - **mcp Python package** -- optional dependency; install with `pip install mcp`. If not installed, MCP support is silently disabled.
-- **Node.js** -- required for `npx`-based MCP servers (most community servers)
-- **uv** -- required for `uvx`-based MCP servers (Python-based servers)
+- **Node.js** -- required for Node-based MCP servers (most community servers)
+- **npm** -- for `npm install -g` to pre-install packages (recommended over `npx -y` for 20-36x faster startup)
+- **uv** -- optional, for `uvx`-based MCP servers (Python-based servers)
 
 Install the MCP SDK:
 
@@ -44,20 +45,26 @@ uv pip install mcp
 
 Add MCP servers to `~/.hermes/config.yaml` under the `mcp_servers` key:
 
+```bash
+# Install globally for fast startup
+npm install -g @modelcontextprotocol/server-memory
+npm_root=$(npm root -g)
+```
+
 ```yaml
 mcp_servers:
-  time:
-    command: "uvx"
-    args: ["mcp-server-time"]
+  memory:
+    command: "node"
+    args: ["<npm_root>/@modelcontextprotocol/server-memory/dist/index.js"]
 ```
 
 Restart Hermes Agent. On startup it will:
 1. Connect to the server
 2. Discover available tools
-3. Register them with the prefix `mcp_time_*`
+3. Register them with the prefix `mcp_memory_*`
 4. Inject them into all platform toolsets
 
-You can then use the tools naturally -- just ask the agent to get the current time.
+You can then use the tools naturally -- just ask the agent to create or search entities.
 
 ## Configuration Reference
 
@@ -68,8 +75,8 @@ Each entry under `mcp_servers` is a server name mapped to its config. There are 
 ```yaml
 mcp_servers:
   server_name:
-    command: "npx"             # (required) executable to run
-    args: ["-y", "pkg-name"]   # (optional) command arguments, default: []
+    command: "node"            # (required) executable to run
+    args: ["/path/to/server/dist/index.js"]  # (optional) command arguments, default: []
     env:                       # (optional) environment variables for the subprocess
       SOME_API_KEY: "value"
     timeout: 120               # (optional) per-tool-call timeout in seconds, default: 120
@@ -152,8 +159,8 @@ The most common transport. Hermes launches the MCP server as a subprocess and co
 ```yaml
 mcp_servers:
   filesystem:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/projects"]
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/home/user/projects"]
 ```
 
 The subprocess inherits a **filtered** environment (see Security section below) plus any variables you specify in `env`.
@@ -186,8 +193,8 @@ All other environment variables (API keys, tokens, secrets) are excluded unless 
 ```yaml
 mcp_servers:
   github:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-github"]
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-github/dist/index.js"]
     env:
       # Only this token is passed to the subprocess
       GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_..."
@@ -219,8 +226,9 @@ No `mcp_servers` key in `~/.hermes/config.yaml`, or it's empty. Add at least one
 ### "Failed to connect to MCP server 'X'"
 
 Common causes:
-- **Command not found**: The `command` binary isn't on PATH. Ensure `npx`, `uvx`, or the relevant command is installed.
-- **Package not found**: For npx servers, the npm package may not exist or may need `-y` in args to auto-install.
+- **Command not found**: The `command` binary isn't on PATH. Ensure `node`, `python`, `npx`, `uvx`, or the relevant command is installed.
+- **Package not found**: The npm package may not exist (some official MCP packages have been removed). Verify with `npm view <package>` before configuring.
+- **Slow startup**: Using `npx -y` causes ~12s delay per server. Install globally and use `node` directly (see Performance section above).
 - **Timeout**: The server took too long to start. Increase `connect_timeout`.
 - **Port conflict**: For HTTP servers, the URL may be unreachable.
 
@@ -243,26 +251,35 @@ pip install --upgrade mcp
 
 The client retries up to 5 times with exponential backoff (1s, 2s, 4s, 8s, 16s, capped at 60s). If the server is fundamentally unreachable, it gives up after 5 attempts. Check the server process and network connectivity.
 
+### "I updated ~/.claude.json but hermes mcp list shows old config"
+
+Hermes reads from `~/.hermes/config.yaml`, NOT `~/.claude.json`. These are separate config files. Update both when changing MCP servers. See "Dual Config Files" section above.
+
 ## Examples
 
-### Time Server (uvx)
+### Memory Server (global node)
+
+```bash
+npm install -g @modelcontextprotocol/server-memory
+```
 
 ```yaml
 mcp_servers:
-  time:
-    command: "uvx"
-    args: ["mcp-server-time"]
+  memory:
+    command: node
+    args:
+    - /home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-memory/dist/index.js
 ```
 
-Registers tools like `mcp_time_get_current_time`.
+Registers tools like `mcp_memory_create_entities`, `mcp_memory_search_nodes`, etc.
 
-### Filesystem Server (npx)
+### Filesystem Server (global node)
 
 ```yaml
 mcp_servers:
   filesystem:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/documents"]
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/home/user/documents"]
     timeout: 30
 ```
 
@@ -273,8 +290,8 @@ Registers tools like `mcp_filesystem_read_file`, `mcp_filesystem_write_file`, `m
 ```yaml
 mcp_servers:
   github:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-github"]
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-github/dist/index.js"]
     env:
       GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_xxxxxxxxxxxxxxxxxxxx"
     timeout: 60
@@ -299,17 +316,17 @@ mcp_servers:
 
 ```yaml
 mcp_servers:
-  time:
-    command: "uvx"
-    args: ["mcp-server-time"]
+  memory:
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-memory/dist/index.js"]
 
   filesystem:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/tmp"]
 
   github:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-github"]
+    command: node
+    args: ["/home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-github/dist/index.js"]
     env:
       GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_xxxxxxxxxxxxxxxxxxxx"
 
@@ -331,8 +348,8 @@ Sampling is **enabled by default**. Configure per server:
 ```yaml
 mcp_servers:
   my_server:
-    command: "npx"
-    args: ["-y", "my-mcp-server"]
+    command: node
+    args: ["/path/to/my-mcp-server/dist/index.js"]
     sampling:
       enabled: true           # default: true
       model: "gemini-3-flash" # model override (optional)
@@ -348,6 +365,72 @@ Servers can also include `tools` in sampling requests for multi-turn tool-augmen
 
 Disable sampling for untrusted servers with `sampling: { enabled: false }`.
 
+## Performance: Global Install vs npx -y
+
+**`npx -y` is slow (~12s per server).** Each call checks/downloads the package. With 4+ servers, startup takes 40-60 seconds.
+
+**Fix: globally install and use `node` directly (0.3-0.9s per server, 20-36x faster):**
+
+```bash
+# 1. Install globally
+npm install -g @modelcontextprotocol/server-memory \
+               @modelcontextprotocol/server-sequential-thinking \
+               @upstash/context7-mcp
+
+# 2. Find the global root
+npm root -g
+# e.g. /home/user/miniconda3/lib/node_modules
+
+# 3. Update config to use node directly
+mcp_servers:
+  memory:
+    command: node
+    args:
+    - /home/user/miniconda3/lib/node_modules/@modelcontextprotocol/server-memory/dist/index.js
+```
+
+For Python-based servers, prefer `python -m mcp_server_fetch` over `uvx mcp-server-fetch`.
+
+**Verification:** `hermes mcp test <name>` — check the "Connected" time. Anything over 2s means npx/uvx overhead.
+
+## Dual Config Files (Hermes vs Claude Code)
+
+**Hermes reads MCP config from `~/.hermes/config.yaml` under `mcp_servers`.**
+**Claude Code / OpenCode / Codex read from `~/.claude.json` under `mcpServers`.**
+
+These are SEPARATE configs. When adding/removing/updating MCP servers, update BOTH:
+
+| Tool | Config File | Key |
+|------|-------------|-----|
+| Hermes Agent | `~/.hermes/config.yaml` | `mcp_servers` |
+| Claude Code | `~/.claude.json` | `mcpServers` |
+| OpenCode | `~/.claude.json` | `mcpServers` |
+
+Use `hermes mcp list` to verify Hermes config, and `cat ~/.claude.json | jq .mcpServers` for Claude Code config.
+
+**Pitfall:** `hermes mcp test` reads from `~/.hermes/config.yaml`, NOT `~/.claude.json`. If you only update one file, the tools will show different server lists.
+
+## Troubleshooting
+
+### Package not found (404)
+
+Some official MCP packages have been removed from npm (e.g. `@modelcontextprotocol/server-time` was deleted). Always verify a package exists before configuring:
+
+```bash
+npm view @modelcontextprotocol/server-time 2>&1 | head -3
+# If 404, the package is gone. Search for alternatives:
+npm search mcp server time
+```
+
+### Dependency conflicts with mcp-server-fetch
+
+`pip install mcp-server-fetch` may downgrade `httpx` and conflict with `hermes-agent` (which pins `httpx[socks]==0.28.1`). Fix:
+
+```bash
+pip install 'httpx[socks]==0.28.1'
+# Accept the minor incompatibility — mcp-server-fetch still works with httpx 0.28.1
+```
+
 ## Notes
 
 - MCP tools are called synchronously from the agent's perspective but run asynchronously on a dedicated background event loop
@@ -356,3 +439,5 @@ Disable sampling for untrusted servers with `sampling: { enabled: false }`.
 - Server connections are persistent and shared across all conversations in the same agent process
 - Adding or removing servers requires restarting the agent (no hot-reload currently)
 - **Reverse direction:** To let Claude Code/Codex/OpenCode connect TO Hermes as an MCP server, see `hermes-agent` skill → `references/mcp-external-tool-integration.md`. Key: `hermes mcp serve` is stdio, NOT HTTP.
+- **Memory server ≠ Hermes memory:** The MCP `memory` server (`@modelcontextprotocol/server-memory`) is a SEPARATE system from Hermes's persistent memory (`~/.hermes/memories/`). See `references/mcp-memory-vs-hermes-memory.md` for details and solutions.
+- **Building custom MCP servers:** See `references/mcp-server-development-pitfalls.md` for sql.js limitations, atomic write patterns, entity extraction anti-patterns, and cascade deletion pitfalls.

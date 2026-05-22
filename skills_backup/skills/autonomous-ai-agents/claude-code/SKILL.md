@@ -715,6 +715,7 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 8. **Use `--model haiku`** for simple tasks (cheaper) and `--model opus` for complex multi-step work.
 9. **Use `--fallback-model haiku`** in print mode to gracefully handle model overload.
 10. **Start new sessions for distinct tasks** — sessions last 5 hours; fresh context is more efficient.
+11. **Don't give Claude Code 4+ large files at once** — reading 4 scripts (400-600 lines each) plus their spec docs exceeds the context window. Claude Code will autocompact repeatedly, eventually thrashing (autocompact fires 3x in 3 turns → abort). This wastes ~$9 and 20+ minutes. Split into batches: 2-3 scripts per invocation, or use Hermes `execute_code` for automated checks and reserve Claude Code for targeted deep review of specific levels.
 11. **Use `--no-session-persistence`** in CI to avoid accumulating saved sessions on disk.
 
 ## Pitfalls & Gotchas
@@ -731,6 +732,10 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 10. **Slash commands (like `/commit`) only work in interactive mode** — in `-p` mode, describe the task in natural language instead.
 11. **`--bare` skips OAuth** — requires `ANTHROPIC_API_KEY` env var or an `apiKeyHelper` in settings.
 12. **Context degradation is real** — AI output quality measurably degrades above 70% context window usage. Monitor with `/context` and proactively `/compact`.
+13. **DeepSeek/non-Anthropic backends may have smaller effective context** — Even if the model advertises 1M context, Claude Code's autocompact can thrash when reviewing many large files. Symptom: "Autocompact is thrashing" error after 15+ minutes, exit code 1. **Workaround: batch the task.** Split into groups of 2-4 files per `-p` invocation instead of all at once. Each batch is a fresh session so context doesn't accumulate.
+14. **Parallel `-p` invocations cause API rate limiting** — Running 4+ `claude -p` processes simultaneously against DeepSeek (or similar) causes all of them to stall at near-0% CPU waiting for API responses. **Workaround: run 2 at a time**, or run sequentially. Check with `ps -p <pid> -o etime,%cpu`.
+15. **`--output-format json` writes at end only** — The output file stays 0 bytes until Claude Code finishes the entire task. Don't assume it's stuck based on file size alone; check process CPU (`ps -p <pid> -o %cpu`) — if >0%, it's working.
+16. **Different review strictness vs Codex** — When using Claude Code for code review, it typically checks parameter values match. Codex additionally checks sampling weights, pairing constraints, label completeness, and post-processing filters. For thorough reviews, run both and compare. See `references/automated-parameter-validation.py` for a fast zero-cost Hermes-side validation pattern that catches gross mismatches before spending API tokens.
 
 ## Rules for Hermes Agents
 

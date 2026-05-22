@@ -12,6 +12,71 @@
     "use_count": 4,
     "view_count": 4
   },
+  "batch-script-generation": {
+    "archived_at": null,
+    "created_at": "2026-05-21T20:57:43.474213+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T16:32:46.163391+00:00",
+    "last_used_at": "2026-05-22T16:31:49.245401+00:00",
+    "last_viewed_at": "2026-05-22T16:31:49.240802+00:00",
+    "patch_count": 6,
+    "pinned": false,
+    "state": "active",
+    "use_count": 4,
+    "view_count": 4
+  },
+  "dataset-validation": {
+    "archived_at": null,
+    "created_at": "2026-05-22T11:00:36.970711+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T11:24:12.350120+00:00",
+    "last_used_at": "2026-05-22T11:24:03.335577+00:00",
+    "last_viewed_at": "2026-05-22T11:24:03.332887+00:00",
+    "patch_count": 7,
+    "pinned": false,
+    "state": "active",
+    "use_count": 4,
+    "view_count": 4
+  },
+  "kubric-dataset-generation": {
+    "archived_at": null,
+    "created_at": "2026-05-22T17:01:55.682692+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T17:02:11.460452+00:00",
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
+  "kubric-dataset-validation": {
+    "archived_at": null,
+    "created_at": "2026-05-22T13:04:13.353435+00:00",
+    "created_by": "agent",
+    "last_patched_at": null,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
+  "kubric-gpu-docker": {
+    "archived_at": null,
+    "created_at": "2026-05-22T13:02:56.473643+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T13:19:47.958839+00:00",
+    "last_used_at": "2026-05-22T16:32:06.448470+00:00",
+    "last_viewed_at": "2026-05-22T16:32:06.423881+00:00",
+    "patch_count": 5,
+    "pinned": false,
+    "state": "active",
+    "use_count": 5,
+    "view_count": 5
+  },
   "mcp-server-development": {
     "archived_at": null,
     "created_at": "2026-05-21T13:53:34.002928+00:00",
@@ -24,6 +89,32 @@
     "state": "active",
     "use_count": 4,
     "view_count": 4
+  },
+  "multi-agent-review": {
+    "archived_at": null,
+    "created_at": "2026-05-22T13:53:21.823659+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T16:32:31.722552+00:00",
+    "last_used_at": "2026-05-22T16:31:58.191974+00:00",
+    "last_viewed_at": "2026-05-22T16:31:58.186638+00:00",
+    "patch_count": 8,
+    "pinned": false,
+    "state": "active",
+    "use_count": 3,
+    "view_count": 3
+  },
+  "physics-sim-dataset-validation": {
+    "archived_at": null,
+    "created_at": "2026-05-22T11:36:52.875737+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T11:52:52.176073+00:00",
+    "last_used_at": "2026-05-22T11:52:06.888586+00:00",
+    "last_viewed_at": "2026-05-22T11:52:06.885901+00:00",
+    "patch_count": 4,
+    "pinned": false,
+    "state": "active",
+    "use_count": 2,
+    "view_count": 2
   },
   "project-progress-review": {
     "archived_at": null,
@@ -51,6 +142,19 @@
     "use_count": 0,
     "view_count": 0
   },
+  "spec-verification": {
+    "archived_at": null,
+    "created_at": "2026-05-22T14:47:41.193990+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T16:32:59.749611+00:00",
+    "last_used_at": "2026-05-22T16:32:13.984841+00:00",
+    "last_viewed_at": "2026-05-22T16:32:13.981006+00:00",
+    "patch_count": 6,
+    "pinned": false,
+    "state": "active",
+    "use_count": 2,
+    "view_count": 2
+  },
   "weixin-wechat-gateway": {
     "archived_at": null,
     "created_at": "2026-05-21T04:24:07.909499+00:00",
@@ -63,5 +167,18 @@
     "state": "active",
     "use_count": 5,
     "view_count": 5
+  },
+  "wsl2-gpu-support": {
+    "archived_at": null,
+    "created_at": "2026-05-22T07:02:20.725803+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-22T16:32:54.027507+00:00",
+    "last_used_at": "2026-05-22T16:31:43.670962+00:00",
+    "last_viewed_at": "2026-05-22T16:31:43.665988+00:00",
+    "patch_count": 4,
+    "pinned": false,
+    "state": "active",
+    "use_count": 4,
+    "view_count": 4
   }
 }

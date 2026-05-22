@@ -119,12 +119,21 @@ terminal(command="codex exec 'Review PR #87. git diff origin/main...origin/pr/87
 terminal(command="gh pr comment 86 --body '<review>'", workdir="~/project")
 ```
 
+## User Preferences
+
+- **User prefers Codex for code review and fixes.** When user says "让codex审查" or "让codex修复", delegate to Codex rather than doing it yourself. User explicitly said "你别操作，你让codex操作" (don't operate yourself, let Codex handle it).
+- **Don't modify parameters without permission.** User said "你不要动我的参数" — respect existing configurations.
+- **Read-only by default.** User said "你先在只有所有文件的只读权限，不要改动任何，除非我让你做啥" — only make changes when explicitly asked.
+
 ## Rules
 
 1. **Always use `pty=true`** — Codex is an interactive terminal app and hangs without a PTY
 2. **Git repo required** — Codex won't run outside a git directory. Use `mktemp -d && git init` for scratch
 3. **Use `exec` for one-shots** — `codex exec "prompt"` runs and exits cleanly
-4. **`--full-auto` for building** — auto-approves changes within the sandbox
+4. **`--full-auto` for building** — auto-approves changes within the sandbox. For review-only tasks, `--full-auto` still works but Codex may try to fix issues unless explicitly told "只检查不修改" (only check, don't modify)
 5. **Background for long tasks** — use `background=true` and monitor with `process` tool
 6. **Don't interfere** — monitor with `poll`/`log`, be patient with long-running tasks
 7. **Parallel is fine** — run multiple Codex processes at once for batch work
+8. **Review strictness is higher than Claude Code** — When reviewing code against specs, Codex additionally checks: sampling weight distributions, pairing constraints (e.g. "same velocity + y, vary all masses"), label completeness, post-processing filters, and geometric filters. If you need a quick parameter-value check, Claude Code is faster and cheaper. For thorough review including sampling strategy and label coverage, use Codex.
+9. **Codex output is in-process log** — Unlike Claude Code (`--output-format json > file`), Codex writes to the PTY. Read results via `process(action="log")`, not from a file.
+10. **Exit code 143 = SIGTERM** — If you kill a Codex process, the background notification will show exit code 143. This is normal, not an error.

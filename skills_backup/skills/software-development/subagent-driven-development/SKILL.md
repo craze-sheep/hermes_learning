@@ -187,6 +187,18 @@ git diff --stat
 git add -A && git commit -m "feat: complete [feature name] implementation"
 ```
 
+## Parallel Multi-Agent Review
+
+When user asks multiple agents to review the same code (e.g., "让codex也检验", "你们三个都要检验"), use the parallel review pattern:
+
+1. Launch Claude Code and/or Codex as background processes with the same review prompt
+2. Do your own review simultaneously (don't just wait)
+3. Cross-compare findings when all finish — consensus = high confidence, single-agent = needs verification
+
+Full methodology and checklist: see `references/parallel-multi-agent-review.md`
+
+**Critical:** Your own review must be as granular as the other agents'. Don't just check high-level params — verify per-level parameter values, variable coverage, dictionary syntax, and constraint implementation.
+
 ## Task Granularity
 
 **Each task = 2-5 minutes of focused work.**
@@ -215,6 +227,7 @@ git add -A && git commit -m "feat: complete [feature name] implementation"
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is PASS** (wrong order)
 - Move to next task while either review has open issues
+- **Do shallow self-review when parallel agents are running** — if you only check high-level params while Codex checks per-item details, your results will look wrong by comparison. Be equally thorough.
 
 ## Handling Issues
 
@@ -350,3 +363,5 @@ When the orchestration involves significant context usage, long review loops, or
 - **`references/gates-taxonomy.md`** — The four canonical gate types (Pre-flight, Revision, Escalation, Abort) with behavior, recovery, and examples. Load when designing or reviewing any workflow that has validation checkpoints — use the vocabulary explicitly so each gate has defined entry, failure behavior, and resumption rules.
 
 Both references adapted from gsd-build/get-shit-done (MIT © 2025 Lex Christopherson).
+
+- **`references/parallel-multi-agent-review.md`** — Run Hermes + Claude Code + Codex in parallel on the same review task, then cross-compare findings (consensus vs divergence). Includes a 16-point checklist for code-vs-document verification. Load when the user asks for multi-agent review, code-vs-spec audit, or says "let all three check it".

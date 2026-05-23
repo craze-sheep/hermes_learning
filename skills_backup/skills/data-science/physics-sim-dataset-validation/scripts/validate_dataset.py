@@ -79,6 +79,9 @@ def check_sample(sample_dir: Path, scene_id: str) -> list[str]:
         if len(frame_dirs) != 36:
             issues.append(f"[FRAMES] {sample_label}: {len(frame_dirs)} frames (expected 36)")
 
+        # Track visible_area per object for embedded-object detection
+        visible_area_sums = defaultdict(int)
+
         for fd in frame_dirs[:3]:  # spot-check first 3 frames
             fn = fd.name
             # PNG
@@ -104,6 +107,21 @@ def check_sample(sample_dir: Path, scene_id: str) -> list[str]:
                     pos = d.get("position", [])
                     if any(np.isnan(v) or np.isinf(v) for v in pos):
                         issues.append(f"[PHYSICS] {sample_label}/f{fn}/{jf.name}: NaN/Inf in position")
+
+        # Full scan for embedded-object detection (all 36 frames)
+        for fd in frame_dirs:
+            dj_dir = fd / "object_dynamicjson"
+            if dj_dir.exists():
+                for jf in dj_dir.glob("*.json"):
+                    with open(jf) as f:
+                        d = json.load(f)
+                    oid = jf.stem
+                    visible_area_sums[oid] += d.get("visible_area", 0)
+
+        # Flag objects that are never visible across all frames
+        for oid, total_visible in visible_area_sums.items():
+            if total_visible == 0:
+                issues.append(f"[EMBEDDED] {sample_label}: obj_id={oid} has visible_area=0 across all 36 frames (likely embedded in another object)")
     else:
         issues.append(f"[MISSING] {sample_label}: dynamic/ directory")
 

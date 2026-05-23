@@ -58,8 +58,29 @@ docker run -d --gpus all \
 
 - Different S scenes can run in parallel (write to different output dirs)
 - Each container needs unique `--name`
-- GPU memory limits concurrent containers (typically 2 with 8GB VRAM)
+- **CPU is the bottleneck, not GPU** — PyBullet physics is CPU-intensive; Blender rendering at 128x128 is lightweight
+- On RTX 4060 8GB + 16 CPU cores: 2-3 containers can run in parallel
+- GPU memory barely used (~116MB per Blender instance at 128x128)
+- Each container uses ~1-2GB RAM and 1-7 CPU cores depending on scene complexity
 - Monitor with `docker logs -f s{n}_dataset`
+- **Docker containers load scripts at startup** — modifying host scripts while containers are running does NOT affect them. Changes take effect on next container start.
+
+### Queue Scheduler for S5-S8
+
+When running multiple scenes with limited slots, use a queue scheduler:
+- Script: `~/.hermes/scripts/scene_scheduler.sh`
+- Queue file: `~/.hermes/scripts/scene_queue.txt` (one task per line: `name scene levels_args`)
+- Cron: every 30 minutes via Hermes cronjob (`no_agent=true`, `script=bash .../scene_scheduler.sh`)
+- Logic: count `_dataset` containers, if <2 start next from queue, skip if container name already exists
+- Self-destruct: when queue empties, script removes its own cronjob + deletes itself + deletes queue file. See `references/self-destructing-cronjob.md` for the pattern.
+- Cronjob ID is hardcoded in the script — update if recreated.
+- Lock: `flock` prevents concurrent execution
+
+Key design decisions:
+- `read` queue head first, then `sed -i '1d'` to remove — avoid reading while modifying the file
+- `grep -x` for exact container name match (not substring)
+- `docker run` output goes to log file, not stdout
+- One container per invocation (break after start), next one on next cron tick
 
 ## Checking Progress
 
@@ -91,7 +112,7 @@ docker logs s{n}_dataset --tail 5
 ```
 database/S{n}/L{level}/{sample_id}/
 ├── {sample_id}.mp4          # Video
-├── {sample_id}.npz          # Depth data
+├── {sample_id}.npz          # Depth data (float32, meters)
 ├── video.json               # Video metadata
 ├── object_static.json       # Static object properties
 ├── dynamic/
@@ -104,3 +125,9 @@ database/S{n}/L{level}/{sample_id}/
 │           └── {object_id}.npz
 └── _scratch/                # Temporary (can delete)
 ```
+
+**Note**: `physics_labels.json` was removed from ALL S1-S8 scripts (import + write_json lines deleted). It was a summary of per-frame data (travel_distance, stop_frame, contact_pair_sequence, etc.) that's redundant with the raw trajectory data. For causal learning, models should learn from raw trajectories, not pre-computed outcomes — pre-computed labels risk leaking causal information. S8's `no_dynamic_collision` filtering still works internally (compute_physics_labels import kept for that purpose only, no file written). The utility file `physics_label_utils.py` is preserved for potential offline evaluation use.
+
+### Depth Map Behavior
+
+Blender's depth pass returns ~1e10 meters for background/sky pixels. This is Kubric's documented sentinel value (`blender_utils.py:324`). Foreground depth is typically 5-16m. Use `depth < 1e9` to filter. Background pixel ratio: ~63% for perspective cameras with small scenes. See `dataset-validation` or `physics-sim-dataset-validation` skills for detailed validation.

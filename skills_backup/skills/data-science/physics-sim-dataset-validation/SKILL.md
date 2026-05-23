@@ -58,15 +58,20 @@ Most common failure mode. Check:
 - `depth.shape == (num_frames, H, W)`
 - `depth.dtype == float32`
 - `np.isfinite(depth).all()` — no NaN/Inf
-- `depth.max()` should be within scene scale (typically < 100m for tabletop scenes)
-- Values ~1e10 indicate Blender far-clip-plane bleed (broken render)
+- Foreground depth should be within scene scale (typically < 50m for tabletop)
+- Background pixels (~1e10 m) are Kubric's sentinel for sky — NOT a bug
 
 ```python
 import numpy as np
 d = np.load(path)["depth"]
 assert d.ndim == 3 and d.dtype == np.float32
 assert np.isfinite(d).all(), "NaN or Inf in depth"
-assert d.max() < 100, f"depth max={d.max():.2e} looks like far-clip bleed"
+
+# Separate foreground (actual scene) from background (sentinel ~1e10)
+fg = d[d < 1e9]
+assert len(fg) > 0, "no foreground pixels"
+assert fg.max() < 50, f"foreground depth max={fg.max():.2f} looks wrong"
+# Background %: perspective views ~40-65%, orthographic ~0%
 ```
 
 ### 3. Segment Mask Correctness
@@ -76,6 +81,7 @@ assert d.max() < 100, f"depth max={d.max():.2e} looks like far-clip bleed"
 - No overlap between objects in same frame
 - `visible_area` in dynamicjson matches `mask.sum()`
 - frame_num in npz matches directory name
+- **Critical**: If a dynamic object has `visible_area=0` for ALL 36 frames AND from ALL camera views, it's likely **geometrically embedded** inside another object (not just out of frame). RGB renders may still show the object, but segmentation assigns overlapping pixels to the front-most surface. Check object z-position vs parent surface z to confirm. See `references/ramp-embedding-bug.md` in `kubric-dataset-validation` skill for the S3 case study.
 
 ### 4. Physics Trajectory Plausibility
 

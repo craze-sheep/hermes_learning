@@ -1,85 +1,52 @@
-# Blender Renderer Depth Pass Bug — Root Cause & Fix
+# Depth ~1e10 in Kubric: Expected Behavior (NOT a bug)
 
-## Bug Description
+## Summary
 
-When a single `Blender` renderer instance is reused to render multiple camera views of the same scene, the depth output is corrupted for all renders except the 2nd one. The corruption manifests as ~64% of pixels having values around 1e10 (Blender's far clipping plane), while only ~36% retain valid depth values (the actual objects and ground).
+Depth values of ~1e10 meters in Kubric-generated datasets are **expected sentinel values** for background/sky pixels. They are NOT caused by renderer reuse, Blender bugs, or rendering corruption.
 
 ## Evidence
 
-### S1 (2 views: front, top)
-- Pattern: ALL odd-ID samples corrupted, ALL even-ID samples clean
-- 50% corruption rate (800/1600 samples)
-- Front view (1st render, odd ID): CORRUPTED
-- Top view (2nd render, even ID): CLEAN
-
-### S2 (3 views: front, top, left)
-- Pattern: Only ID%3==2 (top, 2nd render) is clean
-- 67% corruption rate (1249/1873 samples)
-- Front (1st render, ID%3=1): CORRUPTED
-- Top (2nd render, ID%3=2): CLEAN
-- Left (3rd render, ID%3=0): CORRUPTED
-
-### Corruption Details
-- Bad depth values: ~1.0e10 to ~1.2e10 (Blender far plane)
-- Valid depth range: 5-8m (orthographic) or 5-11m (perspective)
-- The ~36% valid pixels correspond to actual objects/ground visible in frame
-- RGBA and segmentation outputs are NOT affected — only depth
-
-## Root Cause
-
-In `generate_physical_sample()`:
+Kubric source code (`kubric/renderer/blender_utils.py:324`):
 ```python
-# ONE renderer created for ALL views
-renderer = Blender(scene, scratch_root / f"blender_{args.views[0]}", ...)
-
-for view_name, output_sample, sample_dir in view_outputs:
-    rendered = render_view(scene, renderer, cameras[view_name], ...)
+# range [0, 10000000000.0]  # the value 1e10 is used for background / infinity
 ```
 
-In `render_view()`:
+The `z_to_depth` conversion applies per-pixel scaling:
 ```python
-scene.camera = camera                              # camera switches OK
-renderer.scratch_dir = scratch_root / f"blender_{view_name}"  # dir switches OK
-frames = renderer.render(return_layers=("rgba", "depth", "segmentation"))
-# depth output is CORRUPTED for non-2nd renders
+# cameras.py:167
+depth_scaling = sqrt(1 + d² / f²)
+depth = z * depth_scaling
 ```
 
-The Blender renderer's internal state (likely the depth compositing node tree or the depth pass buffer) is not fully reinitialized when switching cameras. Only the 2nd render happens to get a clean depth pass — possibly because the first render "warms up" the compositing pipeline.
+This produces:
+- Center pixels: ~1.00e10 (scaling ≈ 1.00)
+- Corner pixels: ~1.19e10 (scaling ≈ 1.188)
+- 1000+ unique background values between 1.0e10 and 1.19e10
 
-## Fix
+## Background % by Camera Type
 
-**Option A — New renderer per view (recommended, cleanest):**
+| Camera Type | Background % | Why |
+|------------|-------------|-----|
+| Perspective (front) | ~63% | FOV cone extends beyond scene geometry |
+| Perspective (left) | ~42% | Different angle, different coverage |
+| Orthographic (top) | 0% | All parallel rays hit the scene |
+
+These percentages are normal for 128×128 resolution with small objects on a ground plane.
+
+## How to Filter
+
 ```python
-for view_name, output_sample, sample_dir in view_outputs:
-    renderer = Blender(
-        scene,
-        scratch_root / f"blender_{view_name}",
-        adaptive_sampling=True,
-        use_denoising=True,
-        samples_per_pixel=args.samples_per_pixel,
-    )
-    rendered = render_view(scene, renderer, cameras[view_name], ...)
+import numpy as np
+depth = np.load(f"{id}.npz")["depth"]
+
+# Foreground: actual scene content
+fg_mask = depth < 1e9
+foreground = depth[fg_mask]  # range: ~5-16m for typical scenes
+
+# Background: sentinel values (safe to set to 0 or NaN)
+depth[~fg_mask] = 0.0  # or np.nan
 ```
 
-**Option B — Dummy render to prime the pipeline:**
-```python
-# Before the view loop, do a throwaway render to "warm up" the depth pass
-dummy_camera = cameras[args.views[0]]
-scene.camera = dummy_camera
-renderer.render(return_layers=("depth",))  # prime the pipeline
-# Then proceed with the real loop
-```
+## Previously Misidentified As
 
-Option A is preferred — it's cleaner and avoids any residual state issues.
-
-## Files Affected
-- `generate_s1_dataset.py` (line ~809-832)
-- `generate_s2_dataset.py` (line ~910-932)
-- `generate_s3_dataset.py` through `generate_s8_dataset.py` (same pattern)
-
-## Verification After Fix
-```python
-# Re-check a few samples: ALL depth maps should have max < 100
-d = np.load("{id}.npz")["depth"]
-assert d.max() < 100, f"Depth still corrupted: max={d.max()}"
-```
+This was previously documented as a "Blender renderer reuse bug" where reusing the renderer across multiple camera views allegedly corrupted depth output. Investigation by Codex confirmed the values trace to Kubric's intentional sentinel, not to renderer state leakage. The orthographic top view having 0% background was mistaken for "only the 2nd render is clean" — orthographic cameras simply don't produce background pixels by design.

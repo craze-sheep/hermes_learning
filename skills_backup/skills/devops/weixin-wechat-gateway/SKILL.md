@@ -68,18 +68,46 @@ After changing `.env`, restart the gateway for changes to take effect.
 
 ## WSL-Specific: Gateway Persistence
 
-WSL does not support systemd services reliably. Use tmux:
+WSL2 with systemd enabled works well for gateway persistence. Two options:
+
+### Option A: systemd service (recommended if systemd works)
 
 ```bash
-# Start in tmux
-tmux new -s hermes 'hermes gateway run'
+# Install the service
+sudo hermes gateway restart --system
 
-# Detach: Ctrl+B then D
-# Reattach: tmux attach -t hermes
-# List sessions: tmux ls
+# Verify
+sudo systemctl status hermes-gateway
 ```
 
-**Do NOT use `nohup`** — Hermes detects shell-level background wrappers and rejects them. Use `terminal(background=true)` from within Hermes, or tmux from an external terminal.
+**Pitfall — Proxy for WeChat in WSL2 systemd:** systemd services do NOT inherit your shell's proxy environment variables. If WSL2 cannot reach `ilinkai.weixin.qq.com` directly (common with mirrored networking mode), you must add proxy vars to the service file:
+
+```bash
+# Check if you have a local proxy
+echo $HTTPS_PROXY  # e.g. http://127.0.0.1:7897
+
+# Add to the systemd service file
+sudo systemctl edit hermes-gateway
+# Or edit /etc/systemd/system/hermes-gateway.service directly, add:
+#   Environment="HTTP_PROXY=http://127.0.0.1:7897"
+#   Environment="HTTPS_PROXY=http://127.0.0.1:7897"
+#   Environment="NO_PROXY=localhost,127.0.0.1,::1,*.local,10.*,172.16.*,192.168.*"
+
+sudo systemctl daemon-reload
+sudo systemctl restart hermes-gateway
+```
+
+Symptom of missing proxy: `[Weixin] poll error: Cannot connect to host ilinkai.weixin.qq.com:443 ssl:default [Network is unreachable]`
+
+### Option B: tmux (fallback if systemd is not available)
+
+```bash
+tmux new -s hermes 'hermes gateway run'
+# Detach: Ctrl+B then D
+# Reattach: tmux attach -t hermes
+```
+
+**Do NOT use `nohup`** — Hermes detects shell-level background wrappers and rejects them.
 
 ## Troubleshooting
 
@@ -101,10 +129,17 @@ tmux new -s hermes 'hermes gateway run'
 
 Check logs:
 ```bash
+# systemd:
+sudo journalctl -u hermes-gateway --since "5 min ago" | grep -i weixin
+# or tmux:
 tail -30 ~/.hermes/logs/gateway.log | grep -i weixin
 ```
 
 Expected: `[Weixin] Connected account=<id> base=https://ilinkai.weixin.qq.com`
+
+### "Network is unreachable" for ilinkai.weixin.qq.com
+
+WSL2 cannot reach the WeChat API directly. You need a proxy configured in the systemd service. See "WSL-Specific: Gateway Persistence → Proxy for WeChat" section above.
 
 ### Messages not received
 

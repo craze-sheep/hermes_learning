@@ -422,14 +422,30 @@ npm view @modelcontextprotocol/server-time 2>&1 | head -3
 npm search mcp server time
 ```
 
-### Dependency conflicts with mcp-server-fetch
+### Dependency conflicts with mcp-server-fetch (Python)
 
-`pip install mcp-server-fetch` may downgrade `httpx` and conflict with `hermes-agent` (which pins `httpx[socks]==0.28.1`). Fix:
+**Do NOT use the Python `mcp-server-fetch` package with Hermes.** It requires `httpx<0.28` but `hermes-agent` pins `httpx[socks]==0.28.1`. This is NOT just a pip warning — the server will crash at runtime with `AsyncClient.__init__() got an unexpected keyword argument 'proxies'` because httpx 0.28 removed the `proxies` kwarg.
+
+**Fix: replace with the Node-based `mcp-fetch-server`:**
 
 ```bash
-pip install 'httpx[socks]==0.28.1'
-# Accept the minor incompatibility — mcp-server-fetch still works with httpx 0.28.1
+npm install -g mcp-fetch-server
+pip uninstall mcp-server-fetch  # remove conflicting Python package
 ```
+
+Update `~/.hermes/config.yaml`:
+```yaml
+mcp_servers:
+  fetch:
+    enabled: true
+    command: npx
+    args:
+      - mcp-fetch-server
+```
+
+**Pitfall:** `hermes config set mcp_servers.fetch.args '["mcp-fetch-server"]'` saves args as a YAML string, not a list. Edit `config.yaml` directly for list values.
+
+Restart the gateway after changes: `sudo systemctl restart hermes-gateway`
 
 ## Notes
 
@@ -439,5 +455,6 @@ pip install 'httpx[socks]==0.28.1'
 - Server connections are persistent and shared across all conversations in the same agent process
 - Adding or removing servers requires restarting the agent (no hot-reload currently)
 - **Reverse direction:** To let Claude Code/Codex/OpenCode connect TO Hermes as an MCP server, see `hermes-agent` skill → `references/mcp-external-tool-integration.md`. Key: `hermes mcp serve` is stdio, NOT HTTP.
-- **Memory server ≠ Hermes memory:** The MCP `memory` server (`@modelcontextprotocol/server-memory`) is a SEPARATE system from Hermes's persistent memory (`~/.hermes/memories/`). See `references/mcp-memory-vs-hermes-memory.md` for details and solutions.
+- **Memory server ≠ Hermes memory:** There are THREE memory systems: Hermes built-in (MEMORY.md), MCP memory server (per-tool), and Holographic memory (shared SQLite DB). For cross-tool shared memory, use the Holographic system. See `references/mcp-memory-vs-hermes-memory.md` for the full architecture and `references/holographic-memory-agents-template.md` for the AGENTS.md template to deploy across tools.
 - **Building custom MCP servers:** See `references/mcp-server-development-pitfalls.md` for sql.js limitations, atomic write patterns, entity extraction anti-patterns, and cascade deletion pitfalls.
+- **Codex hooks/Clawd dependency:** See `references/codex-hooks-clawd-dependency.md` — Codex hooks hang 600s when Clawd is not running on localhost:23333.

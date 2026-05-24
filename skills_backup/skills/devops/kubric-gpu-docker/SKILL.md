@@ -90,6 +90,32 @@ After generating data, check:
 6. Frame count = 36 for all samples
 7. All file types present per sample (mp4, npz, video.json, object_static.json, dynamic/*)
 
+## Critical Pitfall: Docker Run Command Format
+
+The `kubric-gpu` image uses `/entrypoint.sh` which invokes Blender's `--python` flag. **Do NOT prefix the script path with `python3`** — the entrypoint passes arguments directly to `blender --background --python <script>`.
+
+**Wrong** (will fail with "Python file /workspace/python3 could not be opened"):
+```bash
+docker run ... kubric-gpu python3 /workspace/scripts/generate_s3_dataset.py --levels 1 2 3
+```
+
+**Correct** (use script path relative to -w workdir):
+```bash
+docker run -d --gpus all \
+  --name s3_dataset \
+  --user $(id -u):$(id -g) \
+  -e KUBRIC_USE_GPU=True \
+  -e KUBRIC_GPU_BACKEND=OPTIX \
+  -e PYTHONDONTWRITEBYTECODE=1 \
+  -v "/home/lzy/project/slot-datamaking:/workspace" \
+  -v "/home/lzy/project/slot-datamaking/kubric:/kubric" \
+  -w /workspace \
+  kubric-gpu \
+  task/task6-脚本编写/generate_s3_dataset.py --levels 1 2 3 4 5 6 7 8 9
+```
+
+The script path is relative to `-w /workspace`. The entrypoint.sh handles Python invocation via Blender.
+
 ## Docker Build Best Practices
 
 - `.dockerignore` with `**` + `!entrypoint.sh` — avoids multi-GB build context
@@ -103,3 +129,52 @@ After generating data, check:
 - **Delegate long tasks**: Use subagents for builds, research, multi-file changes.
 - **Check progress**: Don't blindly wait on long commands — poll periodically.
 - **Investigate failures**: Always find root cause, don't just retry.
+
+## Critical Pitfall: --restart + --overwrite = Infinite Loop
+
+**NEVER combine `docker --restart unless-stopped` with `--overwrite` in dataset generation.**
+
+When a script with `--overwrite` finishes, the container exits. The restart policy restarts it, and `--overwrite` causes it to re-run from scratch, overwriting all completed data. This creates an infinite loop that wastes compute and corrupts good data.
+
+**Safe patterns:**
+- `--restart unless-stopped` WITHOUT `--overwrite` — for crash recovery on first run
+- `--overwrite` WITHOUT `--restart` — for intentional regeneration
+- Neither — for one-shot runs where you manually manage lifecycle
+
+**If you need crash recovery with --overwrite**, write a wrapper script that detects existing complete samples and skips them, rather than using Docker restart policy.
+
+**Removing restart from running containers:**
+```bash
+docker update --restart=no <container_name>
+```
+
+## Monitoring Dataset Generation Progress
+
+When containers are running, get specific progress — not just "up 21 minutes":
+
+```bash
+# 1. Current activity (what's being generated right now)
+docker logs --tail 5 <container> 2>&1
+
+# 2. Per-level completion (count videos vs dirs)
+for level in 1 2 3 4 5 6 7 8; do
+  dir="/path/to/database/S{n}/L${level}"
+  if [ -d "$dir" ]; then
+    videos=$(ls "$dir"/*/*.mp4 2>/dev/null | wc -l)
+    dirs=$(ls -d "$dir"/*/ 2>/dev/null | wc -l)
+    echo "L${level}: ${videos} videos, ${dirs} dirs"
+  else
+    echo "L${level}: not started"
+  fi
+done
+
+# 3. Resource usage (CPU is the bottleneck for PyBullet, not GPU)
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+```
+
+**Key signals:**
+- `docker logs` shows "Generating S{n}/L{m} physical X as video dirs Y-Z" — X is current physical sample
+- Each physical sample generates 3-5 videos (views). Total dirs = physical_samples × views_per_sample
+- If videos < dirs, generation is in progress for that level
+- CPU > 100% is normal (PyBullet is CPU-intensive, multi-threaded)
+- Memory typically 400-600MB per container (not the bottleneck)

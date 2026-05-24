@@ -107,6 +107,24 @@ docker logs s{n}_dataset --tail 5
 
 5. **__pycache__ conflicts** — Always set `PYTHONDONTWRITEBYTECODE=1` when running multiple containers that share script directories.
 
+6. **NEVER combine `--restart` with `--overwrite`** — `--restart unless-stopped` + `--overwrite` creates an infinite loop: script finishes → container exits → restart policy relaunches → `--overwrite` re-runs from scratch → wastes compute and corrupts good data. Use one or the other:
+   - `--restart unless-stopped` WITHOUT `--overwrite` — for crash recovery on first run
+   - `--overwrite` WITHOUT `--restart` — for intentional regeneration
+   - Neither — for one-shot runs
+
+7. **Don't blindly restart completed containers** — If a container finished and you `docker start` it with `--overwrite`, it will re-run from scratch. Always check if data is complete before restarting.
+
+### Patching Missing or Corrupt Samples
+
+When individual samples are missing or empty (e.g., interrupted `--overwrite` run), write a small recovery script instead of re-running the full scene script:
+
+1. **Identify the physical sample index**: sample_id ÷ views_per_sample → which physical sample it is
+2. **Write a narrow script** in `task/task6-脚本编写/` that imports the original generator, calls `take_samples()` with the same seed, selects the target physical sample, and calls `generate_physical_sample()` with only the missing views
+3. **Key requirement**: the script must add `_SCRIPT_DIR` to `sys.path` before importing the original module — Codex often forgets this
+4. **Verify**: check `video.json` `cameras.view_name` confirms correct view, compare `dynamic/1/object_dynamicjson/` positions across patched and existing samples to confirm same physical configuration
+
+Example: `generate_s3_l3_17_18.py` patched S3/L3 samples 17 (top) and 18 (left) by importing `generate_s3_dataset` and rendering only those two views of physical sample 6.
+
 ## Output Structure
 
 ```

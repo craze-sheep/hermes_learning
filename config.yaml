@@ -18,7 +18,7 @@ agent:
   gateway_notify_interval: 180
   gateway_auto_continue_freshness: 3600
   image_input_mode: auto
-  disabled_toolsets: []
+  disabled_toolsets: '["memory"]'
   verbose: false
   reasoning_effort: medium
   personalities:
@@ -326,8 +326,8 @@ human_delay:
 context:
   engine: compressor
 memory:
-  memory_enabled: true
-  user_profile_enabled: true
+  memory_enabled: false
+  user_profile_enabled: false
   memory_char_limit: 10000
   user_char_limit: 5000
   provider: holographic
@@ -413,11 +413,12 @@ approvals:
   mcp_reload_confirm: true
   destructive_slash_confirm: true
 command_allowlist:
-- script execution via heredoc
-- script execution via -e/-c flag
-- recursive delete
-- delete in root path
 - find -delete
+- script execution via heredoc
+- shell command via -c/-lc flag
+- script execution via -e/-c flag
+- delete in root path
+- recursive delete
 quick_commands: {}
 hooks: {}
 hooks_auto_accept: false
@@ -491,6 +492,14 @@ x_search:
   model: grok-4.20-reasoning
   timeout_seconds: 180
   retries: 2
+secrets:
+  bitwarden:
+    enabled: false
+    access_token_env: BWS_ACCESS_TOKEN
+    project_id: ''
+    cache_ttl_seconds: 300
+    override_existing: true
+    auto_install: true
 _config_version: 23
 session_reset:
   mode: both
@@ -501,7 +510,23 @@ streaming:
   enabled: false
 platform_toolsets:
   cli:
-  - hermes-cli
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - messaging
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - vision
+  - web
   telegram:
   - hermes-telegram
   discord:
@@ -532,16 +557,17 @@ custom_providers:
   api_mode: chat_completions
   model: mimo-v2.5-pro
 mcp_servers:
-  memory:
+  holographic:
     enabled: true
     command: node
     args:
-    - /home/lzy/miniconda3/lib/node_modules/@modelcontextprotocol/server-memory/dist/index.js
+    - /home/lzy/.hermes/mcp-holographic/index.js
   sequential-thinking:
     enabled: true
-    command: node
+    command: npx
     args:
-    - /home/lzy/miniconda3/lib/node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js
+    - -y
+    - '@modelcontextprotocol/server-sequential-thinking'
   fetch:
     enabled: true
     command: uvx
@@ -549,10 +575,42 @@ mcp_servers:
     - mcp-server-fetch
   context7:
     enabled: true
-    command: node
+    command: npx
     args:
-    - /home/lzy/miniconda3/lib/node_modules/@upstash/context7-mcp/dist/index.js
+    - -y
+    - '@upstash/context7-mcp'
+  memory:
+    enabled: true
+    command: npx
+    args:
+    - -y
+    - '@modelcontextprotocol/server-memory'
 plugins:
   enabled:
   - clawd-on-desk
   disabled: []
+known_plugin_toolsets:
+  cli:
+  - spotify
+
+# ── Fallback Model ────────────────────────────────────────────────────
+# Automatic provider failover when primary is unavailable.
+# Uncomment and configure to enable. Triggers on rate limits (429),
+# overload (529), service errors (503), or connection failures.
+#
+# Supported providers:
+#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
+#   openai-codex (OAuth — hermes auth) — OpenAI Codex
+#   nous         (OAuth — hermes auth) — Nous Portal
+#   zai          (ZAI_API_KEY)         — Z.AI / GLM
+#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
+#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
+#   minimax      (MINIMAX_API_KEY)     — MiniMax
+#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
+#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
+#
+# For custom OpenAI-compatible endpoints, add base_url and key_env.
+#
+# fallback_model:
+#   provider: openrouter
+#   model: anthropic/claude-sonnet-4

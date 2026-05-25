@@ -244,6 +244,129 @@ For large datasets (20K+ samples), use a **phased approach**:
 
 **Python buffering pitfall**: Use `python3 -u` or `stdbuf -oL` when running validation scripts in background. Standard Python buffers stdout when not connected to a terminal, producing no output until script completion.
 
+## Zero Segmentation Mask Root Cause Analysis
+
+When validation finds `seg全零 > 0`, don't just report the count — **categorize the root cause**. There are exactly three categories, and a well-analyzed dataset should have 0 "unknown":
+
+### Category 1: Objects Fallen Off Ground (physics issue)
+
+**Symptom**: `position[2] < -0.5` or xy outside ground bounds (9×6 → x∈[-4.5,4.5], y∈[-3,3]).
+
+**Cause**: Dynamic objects with `lateral_friction=0.0` and horizontal velocity slide off ground edges. Ground has no walls/boundaries in most levels.
+
+**Scope**: S3-S8 levels with horizontal initial velocities. S1/S2 unaffected (vertical motion only).
+
+**Detection**:
+```python
+GROUND_X, GROUND_Y = (-4.5, 4.5), (-3.0, 3.0)
+pos = dynamic_json["position"]
+fallen = pos[2] < -0.5 or pos[0] < GROUND_X[0] or pos[0] > GROUND_X[1] or pos[1] < GROUND_Y[0] or pos[1] > GROUND_Y[1]
+```
+
+### Category 2: Objects Outside Camera FOV (camera coverage issue)
+
+**Symptom**: Object is on the ground (z≈0.22) but projects outside the 128×128 image.
+
+**Cause**: Camera FOV doesn't cover the entire ground plane. Objects near ground edges can be in-scene but out-of-frame.
+
+**Detection** — MUST handle both perspective AND orthographic cameras:
+```python
+def check_in_fov(cam_info, pos):
+    """Check if pos is within camera FOV. Handles both Perspective and Orthographic."""
+    cam = np.array(cam_info["pos"], dtype=np.float64)
+    look = np.array(cam_info["look_at"], dtype=np.float64)
+    obj = np.array(pos, dtype=np.float64)
+    forward = look - cam; forward /= np.linalg.norm(forward)
+    right = np.cross(forward, [0,0,1]); right /= np.linalg.norm(right)
+    up = np.cross(right, forward)
+    to_obj = obj - cam
+
+    if cam_info.get("type") == "Orthographic":
+        # Orthographic: check world-space extent against scale
+        scale = cam_info.get("orthographic_scale", 5.0)
+        half = scale / 2
+        x_local = np.dot(to_obj, right)
+        y_local = np.dot(to_obj, up)
+        return abs(x_local) < half and abs(y_local) < half
+    else:
+        # Perspective: project to pixel coordinates
+        depth = np.dot(to_obj, forward)
+        if depth <= 0: return False
+        u = 64 + np.dot(to_obj, right)/depth * 35/32 * 128
+        v = 64 - np.dot(to_obj, up)/depth * 35/32 * 128
+        return 0 <= u < 128 and 0 <= v < 128
+```
+
+**⚠️ ORTHOGRAPHIC CAMERA PITFALL**: The top camera uses `type=Orthographic, orthographic_scale=5.0`, meaning it sees a 5×5 unit area. But ground is 9×6 (S1/S4) or 8×6 (S2/S3) or 9×6 (S5-S8). **Ground is LARGER than top camera FOV** — objects near ground edges are always out-of-frame in top view. Using the perspective projection formula for the orthographic camera produces WRONG results (objects appear in-FOV when they're actually outside). This was the #1 source of "unknown" zero-mask cases before the fix.
+
+**Camera positions and types** (for reference):
+```python
+CAMERAS = {
+    "front": {"pos": (0, -7.5, 3.2), "look_at": (0, 0, 0.35)},
+    "back":  {"pos": (0, 7.5, 3.2),  "look_at": (0, 0, 0.35)},
+    "left":  {"pos": (-7.5, 0, 3.2), "look_at": (0, 0, 0.35)},
+    "right": {"pos": (7.5, 0, 3.2),  "look_at": (0, 0, 0.35)},
+    "top":   {"pos": (0, -0.01, 8.0),"look_at": (0, 0, 0.0),
+              "type": "Orthographic", "orthographic_scale": 5.0},
+}
+# front/back/left/right: Perspective (focal=35, sensor=32)
+# top: Orthographic (sees 5×5 unit area centered at look_at)
+```
+
+### Category 3: Objects Occluded by Walls/Structures (geometry issue)
+
+**Symptom**: Object is on ground AND within camera FOV, but a static structure (wall, obstacle) blocks the line of sight.
+
+**Cause**: S8/L9 has boundary walls (height 1.2) that occlude small spheres (radius 0.18-0.22, top at z≈0.44). Wall is taller than sphere, so camera elevation (z=3.2) doesn't help.
+
+**Key insight**: Same physical event shows different visibility per view. E.g., S8/L9 front view shows all spheres occluded by bottom wall (y=-1.6), but back view shows all spheres clearly. Left view occludes spheres behind left wall (x=-2.2), etc.
+
+**Detection** — ray-cast from camera to object, check intersection with wall planes:
+```python
+def check_wall_occlusion(cam_pos, obj_pos, wall_y, wall_z_range, wall_x_range):
+    cam, obj = np.array(cam_pos), np.array(obj_pos)
+    direction = obj - cam
+    d_norm = direction / np.linalg.norm(direction)
+    if abs(d_norm[1]) < 1e-10: return False  # parallel to wall
+    t_wall = (wall_y - cam[1]) / d_norm[1]
+    if t_wall <= 0: return False  # wall behind camera
+    hit = cam + t_wall * d_norm
+    t_obj = np.linalg.norm(direction)
+    return (t_wall < t_obj and
+            wall_x_range[0] <= hit[0] <= wall_x_range[1] and
+            wall_z_range[0] <= hit[2] <= wall_z_range[1])
+# Wall definitions for S8/L9:
+# bottom_wall: y=-1.6, x∈[-2.5,2.5], z∈[0,1.2]
+# left_wall:   x=-2.2, y∈[-2.5,2.5], z∈[0,1.2]
+# right_wall:  x=+2.2, y∈[-2.5,2.5], z∈[0,1.2]
+```
+
+### Full Classification Pattern
+
+```python
+# For each zero-mask (object_id, frame):
+# 1. Check fallen → 2. Check FOV (with orthographic fix) → 3. Check occlusion → 4. Unknown (should be 0)
+categories = {"fallen": 0, "fov_out": 0, "occluded": 0, "unknown": 0}
+# ... classify each zero mask into one category
+# If unknown > 0, investigate further — may be a real rendering bug
+```
+
+**Corrected S3-S7 results** (after fixing orthographic projection for top view):
+| Category | Count | % |
+|----------|-------|---|
+| Fallen off ground | 180 | 30.5% |
+| Outside camera FOV | 404 | 68.5% |
+| Occluded by walls | 0 | 0.0% |
+| Unknown (rendering edge) | 6 | 1.0% |
+
+The 6 remaining unknowns are all S3 left-view cases where a small sphere (r=0.18) is occluded by a ramp structure — genuine rendering result, not a bug.
+
+**Full analysis code and S1-S8 results**: `references/zero-mask-root-cause-analysis.md`
+
+### Pitfall: Full Scan is Slow
+
+When scanning 30K+ samples, **sample first** (e.g., first sample per level per scene) to get a quick overview. Full scan of all frames × all objects × all samples can take 5+ minutes. Use full scan only after identifying problem areas with sampling.
+
 ## Known Issues in Generated Data
 
 | Issue | Scope | Cause | Detection |
@@ -252,8 +375,9 @@ For large datasets (20K+ samples), use a **phased approach**:
 | L6 32.5% / L7 23.3% still moving at 3s | S2 L6-L7 only | 3s simulation insufficient for rolling friction. Not a code bug. | `velocity[-1] > 0.01` |
 | Cube visible in RGB but seg mask all-zero | S3 L1-L6 (ramp + cube) | Cube placed inside ramp geometry. Blender seg layer assigns overlapping pixels to front-most surface. | `visible_area == 0` for all frames AND all views. See `references/ramp-embedding-bug.md` for full analysis, affected scope, and fix. |
 | All candidates rejected by collision filter | S8 L2,L3,L5,L7,L10,L11,L12 | Insufficient spacing parameters — objects systematically collide in simulation | `dynamic_dynamic_contact_count=1` for all candidates. See `references/s8-collision-spacing-bug.md` for per-level analysis and fixes. |
-| Segmentation all-zero in final frames | S2-S7, all levels with 3+ objects | Expected: last dynamic object leaves camera view near end of 3s simulation. Only affects `object_segment/{last_obj_id}.npz` in frames 32-36. NOT a bug. | `seg[mask].sum() == 0` for last object in last 5 frames. More prevalent with more objects (S7/L10 has 45 occurrences per level). S1 unaffected (2 objects, simple geometry). |
-| S3/L1/6 incomplete sample | S3/L1/6 only | Only has `dynamic/` directory; missing `6.mp4`, `6.npz`, `video.json`, `object_static.json`. Likely interrupted during S3 --overwrite rerun. Dynamic frames exist but are empty (no object_dynamicjson/object_segment data). | File existence check |
+| Segmentation all-zero: 3 root causes | S2-S8, all levels | Three categories: (1) objects fall off ground, (2) objects outside camera FOV, (3) objects occluded by walls. NOT rendering bugs. See "Zero Segmentation Mask Root Cause Analysis" section above. | Classify each zero mask: check position → check image projection → check wall ray-cast. Should have 0 "unknown". See `references/zero-mask-root-cause-analysis.md` for full breakdown. |
+| Orthographic FOV miscalculation | S5-S7 top view | Top camera is Orthographic (scale=5.0) but perspective formula was used for FOV check. Ground (9×6) > top camera FOV (5×5), so many objects are out-of-frame in top view. | Use `check_in_fov()` with orthographic branch, NOT `project_to_image()`. See "Category 2" section. |
+| S3/L1/6 incomplete sample | S3/L1/6 only | Only has `dynamic/` directory; missing `6.mp4`, `6.npz`, `video.json`, `object_static.json`. Likely interrupted during S3 --overwrite rerun. | File existence check |
 | S7/L10 variable object count | S7/L10 | Some physical events have 5 objects, others have 6. By design — different events in this generalization level use different object counts. | `len(object_static) varies between {5, 6}` |
 | S1/L1 帧32缺1.png | S1/L1 samples | Some samples missing `1.png` in `dynamic/32/`. Does not affect other data. | File existence check |
 
@@ -279,6 +403,9 @@ cd /home/lzy/project/slot-datamaking
 ```
 Excludes S3 by default (`CHECK_SCENES`). Takes ~3-5 min for 24K samples.
 
+### 3. `scripts/validate_consistency.py` (in skill) — Copy for reuse
+The same script is also stored in this skill's `scripts/` directory for portability.
+
 ## Reporting Findings
 
 When writing findings to `致命错误/N.md`, follow this structure:
@@ -288,4 +415,12 @@ When writing findings to `致命错误/N.md`, follow this structure:
 - Root cause with code reference
 - Fix suggestion or status
 
-User preference: 简洁回答, 数字说话, 不要废话. Show cleanup commands before executing; wait for user approval.
+**User preference:** 简洁回答, 数字说话, 不要废话. Show cleanup commands before executing; wait for user approval.
+
+**User preference:** When investigating data quality issues, user may request "只用分析" (analysis only, don't modify anything). In this mode: read files, run analysis code, report findings. Do NOT suggest fixes, do NOT modify data files, do NOT run cleanup scripts. Just diagnose and explain.
+
+**User preference:** Don't stop mid-analysis. If execute_code times out (5min limit), break the scan into smaller batches or use sampling instead of full scan. User expects continuous output, not interrupted workflows.
+
+## Validation Results Summary
+
+See `references/s1-s7-validation-results.md` for the May 2026 validation run results: 26,708 samples checked, 0 errors, 64 warnings (all segmentation boundary cases), 5,580 cross-view events verified.

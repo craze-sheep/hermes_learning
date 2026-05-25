@@ -404,7 +404,8 @@ These are SEPARATE configs. When adding/removing/updating MCP servers, update BO
 |------|-------------|-----|
 | Hermes Agent | `~/.hermes/config.yaml` | `mcp_servers` |
 | Claude Code | `~/.claude.json` | `mcpServers` |
-| OpenCode | `~/.claude.json` | `mcpServers` |
+| Codex | `~/.codex/config.toml` | `[mcp_servers]` |
+| OpenCode | `~/.config/opencode/opencode.json` | `mcp` |
 
 Use `hermes mcp list` to verify Hermes config, and `cat ~/.claude.json | jq .mcpServers` for Claude Code config.
 

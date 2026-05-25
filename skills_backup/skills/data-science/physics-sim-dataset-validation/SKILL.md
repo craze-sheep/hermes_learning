@@ -125,6 +125,32 @@ from collections import Counter
 mod_counts = Counter(i % n_views for i in bad_ids)
 ```
 
+## Pitfalls
+
+### File Naming: `{id}.mp4` vs `1.mp4`
+
+Actual dataset naming convention: files are named after the **sample directory ID**, not a constant `1`.
+
+```
+S1/L1/1/  → 1.mp4, 1.npz
+S1/L1/2/  → 2.mp4, 2.npz
+S1/L1/200/ → 200.mp4, 200.npz
+```
+
+**Bug pattern:** Hardcoding `1.mp4` / `1.npz` in validation scripts only checks sample 1, silently skipping all others. Always use `f'{sid}.mp4'` where `sid` is the sample directory name.
+
+### Comparing Script Versions
+
+When a project has multiple validation script versions (v1, v2, ...), diff the **file existence checks** first — that's where silent coverage gaps hide. A script that passes all samples but only checks `1.mp4` reports zero errors while missing 99% of broken data.
+
+### Depth Map Shape: `(36,128,128)` vs `(128,128)`
+
+Both shapes are valid depending on the pipeline stage:
+- `(128,128)` — single-frame depth (static render or per-frame npz)
+- `(36,128,128)` — full sequence depth in one file
+
+Validation should accept both. Rejecting `(36,128,128)` as "wrong shape" is a false positive.
+
 ## Known Kubric/Blender Pitfalls
 
 See `references/kubric-rendering-bugs.md` for documented issues.

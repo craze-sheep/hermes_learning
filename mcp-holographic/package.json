@@ -12,6 +12,6 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "sql.js": "^1.14.1"
+    "better-sqlite3": "^12.10.0"
   }
 }

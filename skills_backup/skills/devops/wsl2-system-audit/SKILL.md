@@ -185,7 +185,40 @@ locale
 grep -n "proxy\|PROXY\|alias\|export\|PATH" ~/.bashrc | head -20
 ```
 
-### 13. Windows Mount
+### 13. WSLg / GUI Applications
+
+```bash
+# WSLg infrastructure
+ls -la /mnt/wslg/
+ls -la /mnt/wslg/.X11-unix/
+ls -la $XDG_RUNTIME_DIR/wayland* 2>/dev/null || echo "no wayland socket"
+
+# GPU/DRI devices
+ls -la /dev/dri/ 2>/dev/null || echo "no /dev/dri"
+ls -la /dev/dxg 2>/dev/null || echo "no /dev/dxg"
+
+# Mesa drivers
+ls /usr/lib/x86_64-linux-gnu/dri/ | grep -E "d3d12|swrast|llvmpipe"
+
+# Display environment
+echo "DISPLAY=$DISPLAY"
+echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE"
+
+# Weston compositor log (check for errors)
+tail -30 /mnt/wslg/weston.log 2>/dev/null || echo "no weston log"
+
+# Test basic X11 connectivity
+timeout 3 xeyes 2>/dev/null && echo "X11 OK" || echo "X11 test app failed"
+```
+
+Check for:
+- `/dev/dri` missing but `/dev/dxg` present → WSLg uses D3D12, not Vulkan
+- `MESA: error: ZINK: failed to choose pdev` in app output → Mesa defaulting to ZINK instead of d3d12
+- `rdp_allocate_shared_memory: Failed to open "/mnt/shared_memory/{...}"` in weston.log → **shared memory corruption** (see below)
+- No `Xwayland` or `Weston` processes → WSLg compositor not running
+
+### 14. Windows Mount
 
 ```bash
 ls /mnt/c/Users/ >/dev/null 2>&1 && echo "C: OK" || echo "C: FAIL"
@@ -271,8 +304,60 @@ Then restart the VS Code extension (Ctrl+Shift+P → "Claude: Restart" or equiva
 
 **Pitfall:** The VS Code settings.json at `~/.vscode-server/data/Machine/settings.json` may not exist — create it if needed. Project-level `.vscode/settings.json` also works but only for that project.
 
+**Pitfall — `files.exclude` vs `watcherExclude`:** These are separate VS Code settings with different effects. `watcherExclude` stops file monitoring (saves inotify watches). `files.exclude` hides files/directories from the Explorer panel (visual only, doesn't affect inotify). A directory can be excluded from watching but still visible in Explorer, or hidden from Explorer but still watched. When debugging "I can't see my directory in VS Code", check BOTH settings — especially project-level `.vscode/settings.json` which may have `files.exclude` set from an earlier configuration. Common symptom: user adds `watcherExclude` to fix inotify, then can't find their `database/` folder — it was already hidden by a pre-existing `files.exclude` entry.
+
+### WSLg Shared Memory Corruption (GUI apps invisible)
+
+**Symptom:** GUI app launches (process runs, logs say "主窗口已显示") but no window appears on Windows desktop. `xdotool search --name ""` finds zero windows.
+
+**Diagnostic path:**
+1. Check `/mnt/wslg/weston.log` for repeated `rdp_allocate_shared_memory: Failed to open "/mnt/shared_memory/{...}" with error: Input/output error`
+2. Check Mesa errors: `MESA: error: ZINK: failed to choose pdev` → means Mesa can't find a GPU renderer
+3. Check `/dev/dri` (should NOT exist in WSLg — it uses D3D12 via `/dev/dxg`)
+4. Confirm `/dev/dxg` exists (D3D12 device for WSLg)
+
+**Root cause:** WSLg's shared memory channel between the Linux guest and Windows host (via RDP/FreeRDP) gets corrupted. The Weston compositor receives window creation requests but can't allocate shared memory for the framebuffer, so content never reaches the Windows display.
+
+**This is NOT an app-specific or rendering issue** — it affects ALL GUI apps equally.
+
+**Fix:**
+```powershell
+# From Windows PowerShell (not WSL)
+wsl --shutdown
+```
+Then reopen WSL. All WSLg infrastructure (Weston, Xwayland, shared memory) restarts fresh.
+
+**Pitfall:** Trying rendering workarounds (`LIBGL_ALWAYS_SOFTWARE=1`, `MESA_LOADER_DRIVER_OVERRIDE=d3d12`, `GALLIUM_DRIVER=llvmpipe`, `WEBKIT_DISABLE_COMPOSITING_MODE=1`) will NOT help — the issue is in the WSLg compositor's shared memory, not in the app's GL context. Always check weston.log first.
+
 ### Proxy Dependency
 All proxies point to Windows-side proxy (e.g., Clash on 127.0.0.1:7897). In mirrored mode this works, but if Windows proxy isn't running, all network requests fail silently with timeout.
+
+### Mesa ZINK vs D3D12 Rendering Failure
+
+**Symptom:** App logs show `MESA: error: ZINK: failed to choose pdev` and `libEGL warning: egl: failed to create dri2 screen`. App may start but render a blank/invisible window.
+
+**Root cause:** Mesa defaults to ZINK (OpenGL over Vulkan) which requires `/dev/dri` and a Vulkan device. WSLg provides D3D12 via `/dev/dxg` instead. Mesa doesn't auto-detect this.
+
+**Diagnostic:**
+```bash
+ls /usr/lib/x86_64-linux-gnu/dri/ | grep d3d12  # should show d3d12_dri.so
+ls /dev/dxg  # should exist
+ls /dev/dri  # should NOT exist (normal for WSLg)
+```
+
+**Fix (per-app):**
+```bash
+export MESA_LOADER_DRIVER_OVERRIDE=d3d12
+export GALLIUM_DRIVER=d3d12
+# Then run the app
+```
+
+**Fix (system-wide):** Add to `~/.bashrc` or `~/.profile`:
+```bash
+export MESA_LOADER_DRIVER_OVERRIDE=d3d12
+```
+
+**Pitfall:** If `d3d12_dri.so` is missing, install `mesa-utils` or update mesa packages. The `swrast_dri.so` / `kms_swrast_dri.so` drivers exist as fallback but are extremely slow.
 
 ### DISPLAY/WAYLAND Hardcoded in .bashrc
 WSLg auto-sets these. Manual export may interfere. Check if WSLg is active before hardcoding.

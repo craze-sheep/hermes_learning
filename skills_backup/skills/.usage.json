@@ -43,39 +43,39 @@
     "created_at": "2026-05-22T11:00:36.970711+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-05-23T09:38:28.554535+00:00",
-    "last_used_at": "2026-05-23T09:37:56.603559+00:00",
-    "last_viewed_at": "2026-05-23T09:37:56.593807+00:00",
+    "last_used_at": "2026-05-25T13:49:07.118650+00:00",
+    "last_viewed_at": "2026-05-25T13:49:07.113460+00:00",
     "patch_count": 27,
     "pinned": false,
     "state": "active",
-    "use_count": 12,
-    "view_count": 12
+    "use_count": 13,
+    "view_count": 13
   },
   "kubric-dataset-generation": {
     "archived_at": null,
     "created_at": "2026-05-22T17:01:55.682692+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-24T17:21:09.727501+00:00",
-    "last_used_at": "2026-05-24T17:28:54.779176+00:00",
-    "last_viewed_at": "2026-05-24T17:28:54.767716+00:00",
-    "patch_count": 13,
+    "last_patched_at": "2026-05-25T17:32:57.756873+00:00",
+    "last_used_at": "2026-05-25T17:31:35.477216+00:00",
+    "last_viewed_at": "2026-05-25T17:31:35.468400+00:00",
+    "patch_count": 14,
     "pinned": false,
     "state": "active",
-    "use_count": 9,
-    "view_count": 9
+    "use_count": 10,
+    "view_count": 10
   },
   "kubric-dataset-validation": {
     "archived_at": null,
     "created_at": "2026-05-22T13:04:13.353435+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-24T18:50:10.723329+00:00",
-    "last_used_at": "2026-05-24T18:58:36.987392+00:00",
-    "last_viewed_at": "2026-05-24T18:58:36.979368+00:00",
-    "patch_count": 26,
+    "last_patched_at": "2026-05-25T13:49:02.608655+00:00",
+    "last_used_at": "2026-05-25T14:34:50.503522+00:00",
+    "last_viewed_at": "2026-05-25T14:34:50.497479+00:00",
+    "patch_count": 40,
     "pinned": false,
     "state": "active",
-    "use_count": 17,
-    "view_count": 17
+    "use_count": 24,
+    "view_count": 24
   },
   "kubric-gpu-docker": {
     "archived_at": null,
@@ -94,14 +94,14 @@
     "archived_at": null,
     "created_at": "2026-05-21T13:53:34.002928+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-21T15:24:01.116281+00:00",
-    "last_used_at": "2026-05-21T15:22:24.552970+00:00",
-    "last_viewed_at": "2026-05-21T15:22:24.548501+00:00",
-    "patch_count": 12,
+    "last_patched_at": "2026-05-25T17:37:45.887580+00:00",
+    "last_used_at": "2026-05-25T17:36:24.752780+00:00",
+    "last_viewed_at": "2026-05-25T17:36:24.746101+00:00",
+    "patch_count": 18,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 13,
+    "view_count": 13
   },
   "multi-agent-review": {
     "archived_at": null,
@@ -120,14 +120,14 @@
     "archived_at": null,
     "created_at": "2026-05-22T11:36:52.875737+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-23T09:48:45.648089+00:00",
-    "last_used_at": "2026-05-23T09:47:18.717924+00:00",
-    "last_viewed_at": "2026-05-23T09:47:18.701913+00:00",
-    "patch_count": 7,
+    "last_patched_at": "2026-05-25T09:43:42.146403+00:00",
+    "last_used_at": "2026-05-25T13:49:18.737570+00:00",
+    "last_viewed_at": "2026-05-25T13:49:18.730682+00:00",
+    "patch_count": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 9,
-    "view_count": 9
+    "use_count": 11,
+    "view_count": 11
   },
   "project-progress-review": {
     "archived_at": null,
@@ -168,6 +168,19 @@
     "use_count": 2,
     "view_count": 2
   },
+  "web-access": {
+    "archived_at": null,
+    "created_at": "2026-05-25T15:11:47.301969+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_used_at": "2026-05-25T15:11:47.318404+00:00",
+    "last_viewed_at": "2026-05-25T15:11:47.303322+00:00",
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
+  },
   "weixin-wechat-gateway": {
     "archived_at": null,
     "created_at": "2026-05-21T04:24:07.909499+00:00",
@@ -185,14 +198,14 @@
     "archived_at": null,
     "created_at": "2026-05-22T22:28:35.878763+00:00",
     "created_by": "agent",
-    "last_patched_at": null,
-    "last_used_at": "2026-05-23T04:43:23.234173+00:00",
-    "last_viewed_at": "2026-05-23T04:43:23.226361+00:00",
-    "patch_count": 0,
+    "last_patched_at": "2026-05-25T06:58:55.206668+00:00",
+    "last_used_at": "2026-05-25T06:59:13.735848+00:00",
+    "last_viewed_at": "2026-05-25T06:59:13.728894+00:00",
+    "patch_count": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 2,
-    "view_count": 2
+    "use_count": 4,
+    "view_count": 4
   },
   "wsl-gpu-setup": {
     "archived_at": null,
@@ -212,25 +225,25 @@
     "created_at": "2026-05-22T07:02:20.725803+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-05-22T16:32:54.027507+00:00",
-    "last_used_at": "2026-05-24T05:20:27.876699+00:00",
-    "last_viewed_at": "2026-05-24T05:20:27.866352+00:00",
+    "last_used_at": "2026-05-25T06:58:31.908909+00:00",
+    "last_viewed_at": "2026-05-25T06:58:31.900287+00:00",
     "patch_count": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 6,
+    "view_count": 6
   },
   "wsl2-system-audit": {
     "archived_at": null,
     "created_at": "2026-05-24T05:20:59.815222+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-24T07:13:52.247174+00:00",
-    "last_used_at": "2026-05-24T07:13:22.915766+00:00",
-    "last_viewed_at": "2026-05-24T07:13:22.904962+00:00",
-    "patch_count": 9,
+    "last_patched_at": "2026-05-25T07:25:36.248182+00:00",
+    "last_used_at": "2026-05-25T10:40:28.134256+00:00",
+    "last_viewed_at": "2026-05-25T10:40:28.123332+00:00",
+    "patch_count": 15,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 17,
+    "view_count": 17
   }
 }

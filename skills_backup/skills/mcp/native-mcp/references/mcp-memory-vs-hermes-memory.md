@@ -83,11 +83,48 @@ Content for each: see `references/holographic-memory-agents-template.md`.
 | `memory` | MEMORY.md/USER.md | ❌ Hermes only | Hermes-private context, session state |
 | `fact_store` | memory_store.db | ✅ All tools | User prefs, project info, env facts |
 
-**Migration pattern:** When setting up, migrate key facts from MEMORY.md to fact_store. Then:
-- **fact_store**: shared facts (user prefs, project config, environment, tool quirks)
-- **memory**: Hermes-private context (session state, internal prompts, temporary notes)
+## Migration Approach (MEMORY.md → fact_store)
+
+When consolidating two memory systems:
+
+1. **Audit existing MEMORY.md** — identify distinct facts, categorize (user_pref/project/tool/general)
+2. **Check fact_store for duplicates** — query existing facts before adding
+3. **Add missing facts** with proper categories and tags
+4. **Remove test/dummy data** from fact_store
+5. **Keep MEMORY.md for Hermes-private context only** — session state, internal prompts
+
+**What to store in fact_store vs MEMORY.md:**
+
+| fact_store (shared) | MEMORY.md (Hermes only) |
+|---------------------|------------------------|
+| User preferences | Current task state |
+| Project config | Internal prompts |
+| Environment info | Temporary notes |
+| Tool quirks/lessons | Session-specific context |
+| Known bugs/workarounds | |
+
+## Disabling memory entirely (recommended long-term)
+
+**As of May 2026, `memory.provider: holographic` in config.yaml does NOT actually work** — the memory system still writes to `~/.hermes/memories/MEMORY.md` and `USER.md` files. The `memory_banks` table in the SQLite DB stays empty. The provider config key exists but the holographic backend is not implemented.
+
+**To fully switch to fact_store only:**
+
+```bash
+hermes config set memory.memory_enabled false
+hermes config set memory.user_profile_enabled false
+hermes config set agent.disabled_toolsets '["memory"]'
+```
+
+**Trade-off:** Hermes won't auto-inject memory into the system prompt. The agent must explicitly call `fact_store search` to retrieve memories. This adds one tool call per turn but eliminates the dual-system problem.
+
+**Codex's recommended long-term approach:** Implement a retrieval-based injection layer in Hermes that auto-queries relevant high-trust facts per turn (max 8, min_trust 0.6), then disable MEMORY.md auto-injection entirely. This preserves the "auto-injection" benefit of memory while using holographic DB as the single source.
+
+**Hermes memory file location:** `~/.hermes/memories/MEMORY.md` (note the `memories/` subdirectory, NOT `~/.hermes/MEMORY.md`)
 
 ## Pitfalls
+
+### Pitfall: `memory.provider: holographic` is a no-op
+Configuring `memory.provider: holographic` in config.yaml does NOT make the memory tool write to the holographic DB. The memory system ignores this setting and continues writing to files. Don't rely on it — disable memory and use fact_store directly instead.
 
 ### Pitfall: Codex hooks hang when Clawd is not running
 Codex's `hooks.json` calls Clawd on `localhost:23333`. If Clawd is not running, `PermissionRequest` hooks hang for 600s timeout. **Fix:** Temporarily rename `~/.codex/hooks.json` to `hooks.json.bak`, run Codex, then restore.
@@ -108,6 +145,9 @@ The `~/.hermes/AGENTS.md` file is only read by Hermes. Each tool needs its own c
 
 ### Pitfall: Hermes uses `memory` by default, not `fact_store`
 Even with holographic provider configured, Hermes's system prompt prominently shows the `memory` tool. The agent tends to use `memory` instead of `fact_store`. Make the AGENTS.md instructions prominent and specific about when to use `fact_store`.
+
+### Pitfall: WSL2 `ss -tlnp` doesn't show Windows ports
+Even with WSL2 `networkingMode=mirrored`, `ss -tlnp` does NOT show Windows host ports. Use `curl -s --connect-timeout 3 http://localhost:PORT/` or `powershell.exe -Command "Get-NetTCPConnection -LocalPort PORT"` to verify Windows services are listening.
 
 ## Verification
 

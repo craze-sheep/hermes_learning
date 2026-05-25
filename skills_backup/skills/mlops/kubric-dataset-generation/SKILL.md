@@ -146,6 +146,47 @@ database/S{n}/L{level}/{sample_id}/
 
 **Note**: `physics_labels.json` was removed from ALL S1-S8 scripts (import + write_json lines deleted). It was a summary of per-frame data (travel_distance, stop_frame, contact_pair_sequence, etc.) that's redundant with the raw trajectory data. For causal learning, models should learn from raw trajectories, not pre-computed outcomes — pre-computed labels risk leaking causal information. S8's `no_dynamic_collision` filtering still works internally (compute_physics_labels import kept for that purpose only, no file written). The utility file `physics_label_utils.py` is preserved for potential offline evaluation use.
 
+## Dataset Completion Status (2025-05-26)
+
+S1-S8 all complete. Total: **31,880 videos**.
+
+| Scene | Videos | Status |
+|-------|--------|--------|
+| S1 | 1,600 | ✅ |
+| S2 | 2,040 | ✅ |
+| S3 | 2,640 | ✅ |
+| S4 | 2,200 | ✅ |
+| S5 | 4,400 | ✅ |
+| S6 | 4,400 | ✅ |
+| S7 | 6,200 | ✅ |
+| S8 | 8,400 | ✅ |
+
+### HF Upload Pipeline
+
+Upload script: `upload_to_hf.sh` in project root. Uses git-lfs with pipeline pattern:
+- Packs tar.gz files sequentially (pigz -1 for speed)
+- Uploads each tar to `craze-sheep/slot-datamaking-{s1..s8}` repos
+- Pipeline: pack S(n+1) while uploading S(n)
+- State tracking: `.hf_upload_state/completed.txt`
+- Progress: `.hf_upload_state/{slot}.lfs-progress.log`
+- Tars: `tars/{S1..S8}.tar.gz`
+- Proxy: `http://127.0.0.1:7897` (configurable via `HF_GIT_PROXY`)
+
+Monitoring:
+```bash
+# Check completed slots
+cat .hf_upload_state/completed.txt
+
+# Check tar packing progress
+ls -lh tars/
+
+# Check upload progress
+tail -1 .hf_upload_state/*.lfs-progress.log
+
+# Check process tree
+pstree -p $(pgrep -f upload_to_hf.sh | head -1)
+```
+
 ### Depth Map Behavior
 
 Blender's depth pass returns ~1e10 meters for background/sky pixels. This is Kubric's documented sentinel value (`blender_utils.py:324`). Foreground depth is typically 5-16m. Use `depth < 1e9` to filter. Background pixel ratio: ~63% for perspective cameras with small scenes. See `dataset-validation` or `physics-sim-dataset-validation` skills for detailed validation.

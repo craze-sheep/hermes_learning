@@ -51,3 +51,24 @@ All AI tools (Hermes, Claude Code, Codex, OpenCode) share this database.
 | Claude Code | `~/.claude/CLAUDE.md` |
 | Codex | `~/.codex/AGENTS.md` |
 | OpenCode | `~/.config/opencode/AGENTS.md` |
+
+## Deployment Verification
+
+After deploying, verify all tools can access the shared DB:
+```bash
+# Check DB has facts
+/home/lzy/miniconda3/bin/python3 -c "
+import sqlite3
+conn = sqlite3.connect('~/.hermes/memory_store.db')
+cur = conn.cursor()
+cur.execute('SELECT COUNT(*) FROM facts')
+print(f'Total facts: {cur.fetchone()[0]}')
+conn.close()
+"
+
+# Test MCP server starts
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 node ~/.hermes/mcp-holographic/index.js
+```
+
+## Pitfall: Duplicate memory servers
+If a tool has both `memory` (server-memory) and `holographic` MCP servers, remove `memory` — it creates a separate per-tool storage that doesn't share with others. Holographic already provides all memory functionality.

@@ -128,6 +128,39 @@ Then view with `vision_analyze(image_url='/mnt/d/screenshot.png')`.
 | `%LOCALAPPDATA%` | `/mnt/c/Users/<user>/AppData/Local/` |
 | `%APPDATA%` | `/mnt/c/Users/<user>/AppData/Roaming/` |
 
+## Linux GUI Apps in WSL (Tauri, GTK, Electron-Linux)
+
+WSL2 can run Linux-native GUI apps via WSLg, but GPU rendering often fails:
+
+```
+MESA: error: ZINK: failed to choose pdev
+libEGL warning: egl: failed to create dri2 screen
+Gtk-CRITICAL: gtk_widget_get_scale_factor: assertion 'GTK_IS_WIDGET (widget)' failed
+```
+
+### Fix: Force Software Rendering
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 ./app
+```
+
+This bypasses GPU (ZINK/MESA) and uses llvmpipe software renderer. Works for Tauri apps, GTK apps, and most Electron-based Linux builds.
+
+### Alternative: Force X11 Backend
+
+```bash
+GDK_BACKEND=x11 ./app
+```
+
+### When to Use Which
+
+| Symptom | Fix |
+|---------|-----|
+| `ZINK: failed to choose pdev` | `LIBGL_ALWAYS_SOFTWARE=1` |
+| Blank/black window | `LIBGL_ALWAYS_SOFTWARE=1` or `GDK_BACKEND=x11` |
+| Window appears but crashes on interaction | Try both env vars together |
+| App works but is slow/choppy | Software rendering is the cost; no GPU acceleration in WSLg for these apps |
+
 ## Pitfalls
 
 1. **NSIS `/D=` with quotes breaks silently** — installer runs but ignores the path, installs to default location

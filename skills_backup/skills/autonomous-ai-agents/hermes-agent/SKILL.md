@@ -168,6 +168,8 @@ Platform docs: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/
 
 **MCP integration with Claude Code/Codex/OpenCode:** See `references/mcp-external-tool-integration.md` for connecting other coding agents to Hermes as an MCP server. Key: `hermes mcp serve` is stdio, NOT HTTP — use the command directly, not a URL.
 
+**Holographic shared memory:** See `references/holographic-memory-setup.md` for setting up shared memory across all AI tools. Key: read-write separation with `fact_query` (readOnlyHint) and `fact_store` (destructiveHint). All four instruction files (AGENTS.md/CLAUDE.md) must be updated when tools change.
+
 **GitHub backup:** See `references/github-backup-setup.md` for automated daily backup of Hermes config to a private GitHub repo via crontab.
 
 ### Sessions
@@ -376,6 +378,8 @@ Edit with `hermes config edit` or `hermes config set section.key value`.
 | `stt` | `enabled`, `provider` (local/groq/openai/mistral) |
 | `tts` | `provider` (edge/elevenlabs/openai/minimax/mistral/neutts) |
 | `memory` | `memory_enabled`, `user_profile_enabled`, `provider` |
+
+**⚠️ `memory_enabled: false` only disables the memory TOOL.** The MEMORY.md and USER.md files in `~/.hermes/memories/` are still injected into the system prompt as context. To fully remove old memory from prompts, delete or empty those files. See `references/holographic-memory-setup.md` for migration workflow.
 | `security` | `tirith_enabled`, `website_blocklist` |
 | `delegation` | `model`, `provider`, `base_url`, `api_key`, `max_iterations` (50), `reasoning_effort` |
 | `checkpoints` | `enabled`, `max_snapshots` (50) |

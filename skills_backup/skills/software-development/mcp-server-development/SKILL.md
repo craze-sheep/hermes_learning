@@ -192,6 +192,37 @@ process.on('unhandledRejection', (reason) => { console.error(reason); saveDb(); 
 - Chinese stop words (100+): verbs, adjectives, adverbs, common function words
 - For production: consider LLM-based extraction or jieba segmentation
 
+### Tool Annotations (Read-Write Separation)
+
+When an MCP server exposes both read and write tools, use MCP tool annotations to signal intent to clients:
+
+```javascript
+// Read-only tool — clients can call without approval
+server.tool("fact_query", "Read-only memory query", schema, handler, {
+  readOnlyHint: true,
+  destructiveHint: false,
+});
+
+// Write tool — clients may require approval
+server.tool("fact_store", "Write memory", schema, handler, {
+  readOnlyHint: false,
+  destructiveHint: true,
+});
+
+// Independent feedback tool
+server.tool("fact_feedback", "Rate fact quality", schema, handler, {
+  readOnlyHint: false,
+  destructiveHint: true,
+});
+```
+
+**Why this matters:**
+- Codex with `readOnlyHint: true` can call the tool without PermissionRequest hooks
+- Claude Code respects annotations for auto-approve decisions
+- Splitting read/write into separate tools lets clients apply different approval policies
+
+**Pattern:** Create a `fact_query` tool for all read operations (search, probe, related, reason, contradict, list) and keep `fact_store` for writes (add, update, remove). Document the split in all instruction files (AGENTS.md/CLAUDE.md).
+
 ### Dynamic UPDATE Construction
 When updating multiple optional fields, build SQL dynamically:
 ```javascript
@@ -230,14 +261,30 @@ This finds facts about the same entity with divergent trust scores — potential
 - Always check if referenced IDs exist before update/delete/feedback operations
 - Return `isError: true` for missing resources
 
+### Old Memory File Injection (Critical)
+When migrating from file-based memory (MEMORY.md/USER.md) to holographic DB:
+- Setting `memory_enabled: false` and `disabled_toolsets: ["memory"]` only disables the memory **tool**
+- The MEMORY.md and USER.md files in `~/.hermes/memories/` are STILL injected into the system prompt
+- To stop injection: **delete the files** (or move them to .bak first, then delete)
+- Verify by checking the next session's system prompt — the old memory section should be gone
+
+### AGENTS.md/CLAUDE.md Must Be Updated Together
+When changing the MCP tool structure (e.g., adding read-write separation):
+- Update ALL 4 instruction files simultaneously
+- Use the template in `references/multi-tool-agents-template.md`
+- Verify each tool can see the updated instructions (restart may be needed)
+
 ## Example: Holographic Memory Server
 
 See `~/.hermes/mcp-holographic/index.js` for a complete example that:
 - Bridges Hermes Holographic memory to all AI tools
-- Uses sql.js for SQLite without compilation
-- Implements 9 operations (add, search, probe, related, reason, contradict, update, remove, list)
+- Uses better-sqlite3 (migrated from sql.js for FTS5 support)
+- **Read-write separation**: `fact_query` (readOnlyHint) for search/probe/list, `fact_store` (destructiveHint) for add/update/remove
 - Auto-extracts entities from text
 - Persists database to file after writes
+
+See `references/holographic-bridge.md` for implementation details.
+See `references/multi-tool-agents-template.md` for the AGENTS.md template used across all 4 tools.
 
 ## Config Locations
 

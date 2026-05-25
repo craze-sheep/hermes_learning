@@ -186,6 +186,36 @@ terminal(command="opencode stats")
 terminal(command="opencode stats --days 7 --models anthropic/claude-sonnet-4")
 ```
 
+## Default Model & Built-in Provider
+
+OpenCode has a built-in provider called `opencode` with a model `big-pickle`. This cannot be removed via config or auth. It always appears in model lists and sessions may default to it.
+
+**Set your default model** in `~/.config/opencode/opencode.json`:
+```json
+{
+  "model": "xiao/mimo-v2.5-pro"
+}
+```
+Format: `provider/model`. This overrides the built-in default without removing it.
+
+**Disable built-in provider entirely** (optional):
+```json
+{
+  "model": "xiao/mimo-v2.5-pro",
+  "disabled_providers": ["opencode"]
+}
+```
+
+**Force model per invocation** (bypass all config):
+```bash
+opencode run -m xiao/mimo-v2.5-pro "your prompt"
+opencode -m xiao/mimo-v2.5-pro  # interactive
+```
+
+**cc-switch integration**: cc-switch writes `provider` configs to `opencode.json` but does NOT set the top-level `model` field. After cc-switch changes which provider is active, update the `model` field to match (e.g. `providerName/modelName`).
+
+**Pitfall — resuming sessions**: If you resume an old session (`-c` or `-s`) that used `big-pickle`, it will continue with that model regardless of config. Start a new session instead.
+
 ## Pitfalls
 
 - Interactive `opencode` (TUI) sessions require `pty=true`. The `opencode run` command does NOT need pty.

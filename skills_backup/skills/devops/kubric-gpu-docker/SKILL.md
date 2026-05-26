@@ -79,6 +79,114 @@ When a single `Blender` renderer instance is reused across multiple views (switc
 
 **Verification**: `depth.max() > 1e6` indicates corruption. Normal range is scene-dependent (typically 5-10m for kubric scenes).
 
+## Critical Pitfall: Kubric Object Constructor API
+
+Kubric `PhysicalObject` subclasses (Sphere, Cube, Cylinder) have specific constructor signatures. Getting them wrong causes silent failures (objects not rendering, not moving, or crashing).
+
+**Sphere:**
+```python
+# CORRECT — scale is the radius (single float)
+sphere = kb.Sphere(name="s", position=(x, y, z), scale=0.22, mass=1.0, velocity=(0,0,0), material=...)
+
+# WRONG — radius= is NOT a valid kwarg
+sphere = kb.Sphere(radius=0.22)  # KeyError: unknown trait
+```
+
+**Cube:**
+```python
+# CORRECT — scale is (half_x, half_y, half_z), size/2
+size = (8.0, 6.0, 0.08)
+cube = kb.Cube(name="g", position=(...), scale=tuple(v/2 for v in size), static=True, material=...)
+
+# WRONG — background_friction/restitution are NOT constructor kwargs
+cube = kb.Cube(background_friction=0.5)  # KeyError: unknown trait
+```
+
+**Valid kwargs for all PhysicalObject subclasses:**
+- `name`, `position`, `quaternion`, `velocity`, `angular_velocity`
+- `static` (bool, default False), `mass` (float, default 1.0)
+- `friction` (float, default 0.5), `restitution` (float, default 0.5)
+- `material` (kb.PrincipledBSDFMaterial), `segmentation_id` (int)
+
+**Setting physics properties (friction/restitution per-object):**
+Must be done via PyBullet `changeDynamics` AFTER simulator creates bodies:
+```python
+simulator = PyBullet(scene, scratch / "pybullet")
+body_id = asset.linked_objects.get(simulator)
+if body_id is not None:
+    simulator._physics_client.changeDynamics(
+        body_id, -1,
+        lateralFriction=0.5, rollingFriction=0.01,
+        spinningFriction=0.005, restitution=0.3,
+    )
+```
+
+## Critical Pitfall: Renderer Must Be Created AFTER Simulation
+
+The Kubric pipeline has a strict ordering requirement:
+
+```
+1. Build scene + add objects
+2. Create PyBullet simulator + run simulation  ← keyframes stored on assets
+3. Create Blender renderer                     ← renderer observers register here
+4. replay_scene_keyframes(scene)               ← replays keyframes into Blender
+5. renderer.render()                           ← Blender animates using keyframes
+```
+
+**If renderer is created BEFORE simulation**, the keyframe_insert calls during simulation don't trigger Blender's observer system → all frames render the same (final) position → objects appear static.
+
+**replay_scene_keyframes function (copy from S1):**
+```python
+def replay_scene_keyframes(scene) -> None:
+    for asset in scene.assets:
+        keyframes = getattr(asset, "keyframes", None)
+        if not keyframes:
+            continue
+        for member, frame_values in list(keyframes.items()):
+            original = getattr(asset, member)
+            try:
+                for frame, value in sorted(list(frame_values.items())):
+                    setattr(asset, member, value)
+                    asset.keyframe_insert(member, frame)
+            finally:
+                setattr(asset, member, original)
+```
+
+## Critical Pitfall: Two Docker Images, Different Purposes
+
+| Image | GPU | Use case | Video output |
+|-------|-----|----------|-------------|
+| `kubric-gpu` | ✅ `--gpus all` | Production dataset generation | Direct mp4 via imageio |
+| `kubricdockerhub/kubruntu` | ❌ CPU only | Testing / debugging | No imageio-ffmpeg; save PNGs + ffmpeg |
+
+When using `kubricdockerhub/kubruntu`, `imageio.get_writer(mp4)` fails with `No module named 'imageio_ffmpeg'`. Workaround: save frames as PNG, assemble with `ffmpeg` externally.
+
+## Critical Pitfall: OPTIX Silent Fallback to CPU in WSL2 Docker
+
+When running `kubric-gpu` with `KUBRIC_GPU_BACKEND=OPTIX` in WSL2 Docker, OPTIX may silently fail and Blender falls back to CPU rendering. Symptoms:
+
+- `nvidia-smi` shows **0% GPU utilization** and **42MiB VRAM** (no rendering happening on GPU)
+- Container runs for much longer than expected
+- `docker exec <container> nvidia-smi` shows GPU is accessible but unused
+
+This happens because WSL2's GPU passthrough doesn't fully support OPTIX in Docker containers. The container CAN see the GPU (nvidia-smi works), but Blender's OPTIX backend can't initialize it.
+
+**Impact**: Rendering still works (CPU fallback), but is significantly slower:
+- 128×128: fast enough that CPU fallback is barely noticeable
+- 480×480: ~8x slower than GPU, but manageable
+- 720×720: very slow with CPU, but completes
+
+**Detection**: Check GPU utilization during rendering:
+```bash
+/usr/lib/wsl/lib/nvidia-smi  # Look for GPU-Util > 0% and memory usage > 100MiB
+```
+
+**Workarounds**:
+1. Accept CPU rendering for 128×128 production data (fast enough)
+2. For higher resolutions, use `--samples_per_pixel 4` instead of default 32
+3. Run on bare metal Windows or Linux for true GPU rendering
+4. Try `KUBRIC_GPU_BACKEND=CUDA` instead of OPTIX (may or may not help)
+
 ## Dataset Validation Checklist
 
 After generating data, check:
@@ -147,6 +255,28 @@ When a script with `--overwrite` finishes, the container exits. The restart poli
 ```bash
 docker update --restart=no <container_name>
 ```
+
+## Running Multiple Containers Simultaneously
+
+When running S1 + S2 (or more) in parallel, CPU is the bottleneck:
+
+| Metric | One container | Two containers |
+|--------|--------------|----------------|
+| CPU | ~900% (9 cores) | ~1600% (16 cores, near max) |
+| Memory | ~600MB | ~1.2GB |
+| GPU | 0% (CPU rendering) | 0% |
+
+**RTX 4060 Laptop + 16 cores + 9.7GB RAM**: can run 2 containers, but they compete for CPU. Each runs ~40% slower than solo. Monitor with:
+
+```bash
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+```
+
+**Rule of thumb**: if total CPU% > 1500% on 16 cores, one container is being starved. Stop the less important one.
+
+## Script Default Output Directory
+
+The generate scripts default to `--output_root database1`, NOT `database/`. New 720p data goes to `database1/S{n}/`, separate from the original 128p data in `database/S{n}/`. Check the script's argparse defaults if unsure.
 
 ## Monitoring Dataset Generation Progress
 

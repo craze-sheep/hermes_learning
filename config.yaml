@@ -510,6 +510,7 @@ streaming:
   enabled: false
 platform_toolsets:
   cli:
+    - mcp-codegraph
   - browser
   - clarify
   - code_execution
@@ -579,12 +580,14 @@ mcp_servers:
     args:
     - -y
     - '@upstash/context7-mcp'
-  memory:
-    enabled: true
-    command: npx
+  codegraph:
+    command: codegraph
     args:
-    - -y
-    - '@modelcontextprotocol/server-memory'
+      - serve
+      - --mcp
+    timeout: 120
+    connect_timeout: 60
+    enabled: true
 plugins:
   enabled:
   - clawd-on-desk

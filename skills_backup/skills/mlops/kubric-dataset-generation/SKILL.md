@@ -48,6 +48,14 @@ docker run -d --gpus all \
   task/task6-脚本编写/generate_s{n}_dataset.py --levels {levels}
 ```
 
+## Isaac Lab Migration
+
+User is exploring migration from Kubric/PyBullet to Isaac Lab (PhysX 5 + RTX rendering). Key references:
+- `references/pybullet-to-physx5-mapping.md` — detailed parameter mapping
+- `references/slotformer-isaac-lab-notes.md` — SlotFormer pipeline (128×128 resolution, 2 core models), Isaac Lab hardware requirements (16GB VRAM min), PhysX 5 config classes
+
+Migration risks: rollingFriction has no PhysX equivalent (affects S2/S7), ramp primitive not built-in (affects S3), quaternion convention differs (wxyz vs xyzw). Current dataset (31,880 videos, S1-S8) is complete and working on Kubric. User's RTX 4060 8GB is below Isaac Lab's 16GB VRAM minimum.
+
 ## Key Environment Variables
 
 - `KUBRIC_USE_GPU=True` — Enable GPU rendering
@@ -58,8 +66,8 @@ docker run -d --gpus all \
 
 - Different S scenes can run in parallel (write to different output dirs)
 - Each container needs unique `--name`
-- **CPU is the bottleneck, not GPU** — PyBullet physics is CPU-intensive; Blender rendering at 128x128 is lightweight
-- On RTX 4060 8GB + 16 CPU cores: 2-3 containers can run in parallel
+- **CPU is the bottleneck, not GPU** — PyBullet physics is CPU-intensive; Blender rendering at 128x128 is lightweight. On RTX 4060 8GB: GPU shows 0% utilization, ~42MiB VRAM. S1 container uses ~188% CPU (~2 cores) and ~1.8GB RAM. Multiple containers share the GPU trivially.
+- GPU memory barely used (~42MiB per Blender instance at 128x128, negligible at any resolution due to CPU fallback in WSL2 Docker)
 - GPU memory barely used (~116MB per Blender instance at 128x128)
 - Each container uses ~1-2GB RAM and 1-7 CPU cores depending on scene complexity
 - Monitor with `docker logs -f s{n}_dataset`
@@ -97,9 +105,41 @@ docker logs s{n}_dataset --tail 5
 
 ## Pitfalls
 
-1. **Don't assume view count** — Each scene has different view configs. Check the parameter config doc, not assumptions. S1=2 views, S2=3 views, S5-S8=5 views.
+8. **Resolution affects rendering time exponentially** — The `--resolution` parameter (default: 128) controls output image/video dimensions. Higher resolutions are dramatically slower:
+   - 128×128 — baseline speed, ~1-2 min per sample
+   - 480×480 — ~8x slower than 128
+   - 720×720 — ~15-30x slower than 128. On RTX 4060 (16 cores), S1 (800 samples, L1-L5=100, L6-L7=150) takes ~33 hours
+   - Also increases output file sizes proportionally (mp4, npz, png frames)
+   - GPU memory usage also increases with resolution
+   - When regenerating at higher resolution, use `--output_root` to avoid overwriting existing 128p data
 
-2. **Don't modify parameters without asking** — User is sensitive about parameter changes. Always confirm before modifying script arguments, view configs, or level selections.
+8c. **GPU is essentially idle during Kubric runs** — PyBullet physics simulation is 100% CPU. Blender rendering at 128×128 is so light that GPU utilization stays at 0% with only ~42MiB VRAM. This is NOT a bug — it means:
+   - Multiple containers can run in parallel without GPU contention
+   - CPU cores (not GPU) are the real bottleneck
+   - Checking GPU utilization is not useful for monitoring progress; use `docker stats` for CPU% instead
+   - Even at 720×720, GPU usage remains minimal because Blender's CPU fallback is being used (OPTIX often silently falls back to CPU in WSL2 Docker — see `kubric-gpu-docker` skill)
+
+8b. **Kubric API — copy existing patterns, don't guess** — When writing new Kubric scripts, ALWAYS read existing S1-S8 scripts first and copy the exact API patterns. Kubric's Python API differs from standard conventions:
+   - `kb.Sphere(scale=R)` — NOT `radius=R`
+   - `kb.Cube(scale=(x/2, y/2, z/2))` — scale is half-extents, NOT full dimensions
+   - No `background_friction` / `background_restitution` kwargs on objects — these raise `KeyError`
+   - `simulator.run(frame_start=0, frame_end=N-1)` — NOT `run(duration=..., dynamic_objects=...)`
+   - Physics properties (friction, restitution) set via `simulator._physics_client.changeDynamics(body_id, -1, lateralFriction=..., ...)` AFTER simulator creates the bodies
+   - `imageio_ffmpeg` is NOT installed in `kubricdockerhub/kubruntu` — use `ffmpeg` CLI for video assembly
+   - `imageio.get_writer()` will fail with `ImportError: imageio_ffmpeg` — save frames as PNG first, then `ffmpeg -framerate FPS -i frames/%04d.png -c:v libx264 -pix_fmt yuv420p video.mp4`
+   - Blender rendering at 480×480 is ~8x slower than 128×128 — use `samples_per_pixel=4` for demos, `32` for production
+
+9. **Don't assume view count** — Each scene has different view configs. Check the parameter config doc, not assumptions. S1=2 views, S2=3 views, S5-S8=5 views.
+
+2. **Don't modify parameters without asking** — User is very protective of existing data and parameters. Always confirm before modifying script arguments, view configs, or level selections. NEVER run with `--overwrite` on existing data without explicit permission. Use `--output_root` to redirect test outputs to a separate directory instead.
+
+2b. **Use `--output_root` for test runs** — When testing new resolutions or parameters, ALWAYS use `--output_root <new_dir>` to avoid touching existing data. Example: `--output_root database1l`. Never assume it's OK to overwrite `database/` data.
+
+2e. **Default `--output_root` is `database1`, NOT `database`** — The script's `--output_root` defaults to `database1`, so running without this flag writes to `database1/S{n}/`, NOT `database/S{n}/`. The original data lives in `database/`. If the user wants to regenerate into `database/`, they must explicitly pass `--output_root database`. Always check which directory the user intends before launching.
+
+2c. **Read existing run commands first** — The user maintains run commands at `task/task7-数据集/运行命令.md`. Read this file before constructing Docker commands. Use the exact same Docker image, volume mounts, and env vars. Don't use `kubricdockerhub/kubruntu` when `kubric-gpu` is specified.
+
+2d. **Copy existing scripts, don't write from scratch** — When creating new Kubric scripts, ALWAYS read existing S1-S8 scripts first and copy the exact patterns. The user explicitly said "抄都抄不明白吗" (can't even copy properly?) when I kept making API mistakes by writing from memory. The correct approach: read the existing script, extract the relevant functions, adapt minimally.
 
 3. **OPTIX fallback** — If `KUBRIC_GPU_BACKEND=OPTIX` errors, change to `KUBRIC_GPU_BACKEND=CUDA`.
 

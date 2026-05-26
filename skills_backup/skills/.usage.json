@@ -55,14 +55,14 @@
     "archived_at": null,
     "created_at": "2026-05-22T17:01:55.682692+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-25T17:32:57.756873+00:00",
-    "last_used_at": "2026-05-25T17:31:35.477216+00:00",
-    "last_viewed_at": "2026-05-25T17:31:35.468400+00:00",
-    "patch_count": 14,
+    "last_patched_at": "2026-05-26T06:25:20.305654+00:00",
+    "last_used_at": "2026-05-26T06:24:21.133656+00:00",
+    "last_viewed_at": "2026-05-26T06:24:21.124279+00:00",
+    "patch_count": 27,
     "pinned": false,
     "state": "active",
-    "use_count": 10,
-    "view_count": 10
+    "use_count": 19,
+    "view_count": 19
   },
   "kubric-dataset-validation": {
     "archived_at": null,
@@ -81,14 +81,14 @@
     "archived_at": null,
     "created_at": "2026-05-22T13:02:56.473643+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-24T18:14:55.780101+00:00",
-    "last_used_at": "2026-05-24T18:58:36.969456+00:00",
-    "last_viewed_at": "2026-05-24T18:58:36.952037+00:00",
-    "patch_count": 8,
+    "last_patched_at": "2026-05-26T17:30:36.496265+00:00",
+    "last_used_at": "2026-05-26T17:30:23.347864+00:00",
+    "last_viewed_at": "2026-05-26T17:30:23.342920+00:00",
+    "patch_count": 12,
     "pinned": false,
     "state": "active",
-    "use_count": 12,
-    "view_count": 12
+    "use_count": 17,
+    "view_count": 17
   },
   "mcp-server-development": {
     "archived_at": null,
@@ -115,6 +115,19 @@
     "state": "active",
     "use_count": 3,
     "view_count": 3
+  },
+  "physics-informed-video-prediction": {
+    "archived_at": null,
+    "created_at": "2026-05-26T14:58:59.186080+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-26T14:59:24.064283+00:00",
+    "last_used_at": "2026-05-26T14:59:51.931027+00:00",
+    "last_viewed_at": "2026-05-26T14:59:51.917860+00:00",
+    "patch_count": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "physics-sim-dataset-validation": {
     "archived_at": null,
@@ -173,13 +186,13 @@
     "created_at": "2026-05-25T15:11:47.301969+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-05-25T15:11:47.318404+00:00",
-    "last_viewed_at": "2026-05-25T15:11:47.303322+00:00",
+    "last_used_at": "2026-05-26T14:47:34.500965+00:00",
+    "last_viewed_at": "2026-05-26T14:47:34.485472+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 3,
+    "view_count": 3
   },
   "weixin-wechat-gateway": {
     "archived_at": null,

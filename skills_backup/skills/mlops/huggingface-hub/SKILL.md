@@ -141,6 +141,24 @@ done
 
 **Pitfall (proxy not clearing in Hermes terminal)**: `bash -lic` re-sources `~/.bashrc` which re-exports proxy vars. Neither `unset` nor `env -u` nor Python `os.environ.pop()` reliably fixes this. Use the `env -i` wrapper template: `templates/run_no_proxy.sh`. See `references/hf-proxy-china.md` for the full ranked fix list.
 
+**Pitfall (diagnosing stuck hf upload)**: If `hf upload` has been running for hours on a file that should take minutes, it's likely stuck on proxy-induced SSL failure. Diagnostic checklist:
+1. `ps -p PID -o pid,cmd,%cpu,etime` — check runtime; hours for a few GB = stuck
+2. `cat /proc/PID/status | grep State` — stuck processes show `S (sleeping)` not `R (running)`
+3. `ls .hf_upload_state/*.uploaded` — no new marker = no progress
+4. `cat /proc/PID/environ | tr '\0' '\n' | grep -i proxy` — if proxy vars present, that's the cause
+Fix: `kill PID`, clear proxy at bash level, re-run upload script (markers ensure completed slots are skipped).
+
+**Pitfall (hf-mirror.com mid-transfer stalls)**: Even with proxy cleared, `hf upload` to hf-mirror.com can stall mid-transfer (e.g., stuck at 97% with speed dropping from ~15 MB/s to ~100 KB/s). This is different from the proxy-induced SSL stall — the upload starts fine but hf-mirror's server closes the connection partway through. Observed pattern: S3 (2.4 GB) uploaded fine at 15 MB/s, then S4 (2.1 GB) stalled at 97% for hours. The process shows `S (sleeping)` state and the `.uploaded` marker never appears.
+
+**Diagnosis**: Check `Process Files` progress bar — if it's at 90%+ but speed has dropped to KB/s, it's a mid-transfer stall, not a proxy issue.
+
+**Mitigation options** (none are perfect):
+1. Kill and retry — may stall again at a different percentage
+2. Use `upload-large-folder` instead of `upload_file` — has built-in resumable chunked uploads
+3. Split large tars into smaller chunks (< 1 GB each) — less likely to stall
+4. Upload during off-peak hours (hf-mirror may have less traffic)
+5. Fall back to `git clone` + `git lfs` + `git push` through proxy to huggingface.co directly (slower but more reliable)
+
 ## Git-LFS Upload Monitoring
 
 When uploading via `git push` + git-lfs (not `hf upload`), see `references/git-lfs-upload-monitoring.md` for progress monitoring, slow-upload diagnosis (proxy, rate limiting, send queue analysis via `ss -tnp`), and a robust upload script architecture pattern.

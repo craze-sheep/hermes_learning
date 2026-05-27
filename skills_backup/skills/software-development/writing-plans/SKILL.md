@@ -162,8 +162,29 @@ read_file("src/app.py")
 Decide:
 - Architecture pattern
 - File organization
+- **Environment management** — see "Python Environment" below
 - Dependencies needed
 - Testing strategy
+
+#### Python Environment (User Preference)
+
+**ALWAYS use conda for Python projects. NEVER install packages on system Python.**
+
+```bash
+# Create conda env
+conda create -n <project-name> python=3.11 -y
+
+# Activate and install
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate <project-name>
+pip install -r requirements.txt
+```
+
+All Python commands in the plan MUST include the conda activation preamble:
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate <env-name> && python ...
+```
+
+If packages were installed on system Python, uninstall them first before creating the conda env.
 
 ### Step 4: Write Tasks
 
@@ -282,6 +303,24 @@ When executing, use the `subagent-driven-development` skill:
 - Code quality review after spec passes
 - Proceed only when both reviews approve
 
+## Reference Files
+
+- `references/responses-api-sse-format.md` — OpenAI Responses API SSE streaming format, event types, and proxy implementation notes. Load when building API gateways that proxy /v1/responses.
+
+## Pitfalls
+
+**Conda environments for Python projects:**
+When the user specifies conda, always use it. System Python packages may conflict. Activate with:
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate <env-name>
+```
+
+**Terminal tool and Chinese/special characters in paths:**
+Package management commands (pip install/uninstall) may hang when the working directory contains Chinese characters. Use `workdir="/tmp"` for pip commands in such projects.
+
+**API key/token length in terminal output:**
+Long tokens (40+ chars) may be silently truncated in terminal output, causing false test failures in integration tests. Write tokens to temp files and read via `$(cat /tmp/key.txt)`.
+
 ## Remember
 
 ```
@@ -293,5 +332,16 @@ Verification steps
 DRY, YAGNI, TDD
 Frequent commits
 ```
+
+## Pitfalls
+
+### Terminal Tool: Non-ASCII Paths
+pip, python, and other tools may hang when the working directory contains Chinese/non-ASCII characters. **Fix:** Use `workdir=/tmp` for pip operations in directories with non-ASCII names.
+
+### Terminal Tool: Long String Truncation
+The terminal tool truncates long strings in output (e.g., API keys, tokens). This causes false test failures when asserting on truncated values. **Fix:** Write long values to a temp file, then read from the file using `cat` or Python.
+
+### Port Conflicts (TIME-WAIT)
+When restarting servers quickly, ports may show "address already in use" due to TIME-WAIT sockets. **Fix:** Use a different port, or wait for TIME-WAIT to clear (60s). Check with `ss -tlnp | grep LISTEN`.
 
 **A good plan makes implementation obvious.**

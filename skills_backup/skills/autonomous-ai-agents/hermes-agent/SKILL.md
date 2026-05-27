@@ -847,6 +847,9 @@ and logs — avoids shell-escaping backslashes in bash.
 2. `hermes skills config` — check platform enablement
 3. Load explicitly: `/skill name` or `hermes -s name`
 
+### Installing skills from a local repo clone
+`hermes skills install <local-path>` fails — it treats local paths as GitHub identifiers. See `references/skills-install-local-repo.md` for the direct-file-copy workaround.
+
 ### Gateway issues
 Check logs first:
 ```bash

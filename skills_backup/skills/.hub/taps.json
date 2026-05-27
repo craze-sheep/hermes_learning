@@ -1,0 +1,8 @@
+{
+  "taps": [
+    {
+      "repo": "obra/superpowers",
+      "path": "skills/"
+    }
+  ]
+}

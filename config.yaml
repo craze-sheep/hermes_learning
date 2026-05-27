@@ -7,7 +7,7 @@ credential_pool_strategies: {}
 toolsets:
 - hermes-cli
 agent:
-  max_turns: 90
+  max_turns: 300
   gateway_timeout: 1800
   restart_drain_timeout: 180
   api_max_retries: 3
@@ -345,7 +345,7 @@ delegation:
   api_key: ''
   api_mode: ''
   inherit_mcp_toolsets: true
-  max_iterations: 50
+  max_iterations: 300
   child_timeout_seconds: 600
   reasoning_effort: ''
   max_concurrent_children: 3
@@ -413,12 +413,13 @@ approvals:
   mcp_reload_confirm: true
   destructive_slash_confirm: true
 command_allowlist:
-- find -delete
 - script execution via heredoc
-- shell command via -c/-lc flag
-- script execution via -e/-c flag
+- stop/restart hermes gateway (kills running agents)
+- find -delete
 - delete in root path
 - recursive delete
+- script execution via -e/-c flag
+- shell command via -c/-lc flag
 quick_commands: {}
 hooks: {}
 hooks_auto_accept: false
@@ -510,7 +511,7 @@ streaming:
   enabled: false
 platform_toolsets:
   cli:
-    - mcp-codegraph
+  - mcp-codegraph
   - browser
   - clarify
   - code_execution
@@ -583,8 +584,8 @@ mcp_servers:
   codegraph:
     command: codegraph
     args:
-      - serve
-      - --mcp
+    - serve
+    - --mcp
     timeout: 120
     connect_timeout: 60
     enabled: true

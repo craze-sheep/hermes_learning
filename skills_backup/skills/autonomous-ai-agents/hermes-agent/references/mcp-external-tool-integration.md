@@ -59,7 +59,16 @@ codex exec "list your mcp tools"
 
 ## OpenCode
 
-Config file: `~/.config/opencode/opencode.json`
+Config file: `~/.config/opencode/opencode.json` (or `opencode.jsonc`)
+
+**Pitfall: OpenCode may use `.jsonc` instead of `.json`.** When auditing or adding MCP servers, check BOTH files:
+```bash
+ls ~/.config/opencode/opencode.json ~/.config/opencode/opencode.jsonc 2>/dev/null
+```
+If both exist, OpenCode merges them (jsonc may take precedence). When in doubt, grep to find where a specific server is configured:
+```bash
+grep -l "codegraph" ~/.config/opencode/opencode.json* 2>/dev/null
+```
 
 Add to the `mcp` object:
 ```json
@@ -97,7 +106,24 @@ opencode  # check startup for MCP connection messages
 |------|------------|------------|
 | Claude Code | `~/.claude.json` | `-s user` for global |
 | Codex | `~/.codex/config.toml` | N/A (always global) |
-| OpenCode | `~/.config/opencode/opencode.json` | N/A (always global) |
+| OpenCode | `~/.config/opencode/opencode.json` (or `.jsonc`) | N/A (always global) |
+
+## Verifying MCP Servers Across All Tools
+
+When auditing whether a specific MCP server (e.g. codegraph, holographic) is configured everywhere:
+
+```bash
+# Claude Code — use `claude mcp list` as authoritative source
+claude mcp list
+
+# Codex — grep config.toml
+grep '\[mcp_servers\.' ~/.codex/config.toml
+
+# OpenCode — check BOTH json and jsonc
+grep -h "server_name" ~/.config/opencode/opencode.json ~/.config/opencode/opencode.jsonc 2>/dev/null
+```
+
+**Pitfall: `claude mcp list` is the source of truth for Claude Code.** The `~/.claude.json` file has `mcpServers` at the top level (user scope) AND under `projects.<path>.mcpServers` (project scope). `claude mcp list` merges both and shows connection status. Don't just grep the JSON file — you may miss project-scoped servers or see stale entries.
 
 ## What Hermes MCP Exposes
 

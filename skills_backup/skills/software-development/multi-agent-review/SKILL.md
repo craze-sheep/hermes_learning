@@ -209,6 +209,56 @@ Summary table with per-file status from each reviewer.
   Use it as a supplementary checker, not a critical path.
 - **OpenCode needs no PTY** — use `opencode run` (not interactive mode) for reviews.
 
+## Three-Round Iteration Pattern (Model-Perspective Awareness)
+
+When agents share the same model, they share blind spots. Use different models
+at different stages to catch what same-model pairs miss.
+
+**Pattern:**
+```
+Round 1: Agent A + Agent B (same model, e.g. both mimo2.5)
+  A writes → B reviews → A fixes → B re-reviews
+  Repeat until both agree
+
+Round 2: Agent C (different model, e.g. Claude Code / GPT)
+  C evaluates the Round 1 output
+  ┌──────┴──────┐
+  Pass        Fail
+  │             │
+  Done      Back to Round 1
+              A+B iterate again
+              C re-evaluates
+              Until C passes
+```
+
+**Why this works:**
+- Same-model pairs (Hermes + OpenCode, both mimo2.5) iterate fast and catch
+  obvious issues, but share the same reasoning patterns and blind spots
+- Different-model evaluator (Claude Code, GPT, DeepSeek) brings a fresh
+  perspective that catches what the same-model pair missed
+- The iteration converges because each round addresses the previous round's gaps
+
+**When to use:**
+- Design documents where the same-model pair might miss architectural flaws
+- Code implementation where automated review isn't enough
+- Research tasks where perspective diversity matters
+- User explicitly says "让claudecode评估一下" or "三方验证"
+
+**Contrast with parallel review (Step 2):**
+- Parallel review: all agents review independently, then cross-compare findings
+- Three-round iteration: same-model pair iterates first, then different-model
+  evaluates the result
+- Use parallel review for verification (is this correct?)
+- Use three-round iteration for creation (design this well)
+
+**Example (from slot-datamaking ML project):**
+```
+Hermes writes architecture doc → OpenCode reviews → Hermes fixes → OpenCode ok
+→ Claude Code evaluates → "missing data loader section"
+→ Hermes + OpenCode iterate → add data loader
+→ Claude Code re-evaluates → passes
+```
+
 ## Integration
 
 - **batch-script-generation**: After generating N scripts from configs, use this

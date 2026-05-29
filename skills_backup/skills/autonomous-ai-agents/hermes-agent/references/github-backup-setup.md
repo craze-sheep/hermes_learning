@@ -29,31 +29,62 @@ chmod 600 ~/.git-credentials
 Save to `~/.hermes/scripts/backup_to_github.sh`:
 ```bash
 #!/bin/bash
+set -euo pipefail
+
 BACKUP_DIR="/tmp/hermes_backup"
 REPO_URL="https://github.com/USER/REPO.git"
 HERMES_DIR="$HOME/.hermes"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-rm -rf "$BACKUP_DIR"
-git clone "$REPO_URL" "$BACKUP_DIR" 2>/dev/null
+# Use git pull for incremental updates (faster than clone each time)
+if [ -d "$BACKUP_DIR/.git" ]; then
+    cd "$BACKUP_DIR"
+    git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || {
+        echo "❌ git pull failed, skipping"
+        exit 1
+    }
+else
+    rm -rf "$BACKUP_DIR"
+    git clone "$REPO_URL" "$BACKUP_DIR" 2>/dev/null || {
+        echo "❌ git clone failed"
+        exit 1
+    }
+fi
+
 cd "$BACKUP_DIR" || exit 1
 
 # Copy config and skills
-cp -r "$HERMES_DIR"/config* . 2>/dev/null
-cp -r "$HERMES_DIR"/*.yaml . 2>/dev/null
-cp -r "$HERMES_DIR"/*.json . 2>/dev/null
-cp -r "$HERMES_DIR"/*.toml . 2>/dev/null
+cp -r "$HERMES_DIR"/config* . 2>/dev/null || true
+cp -r "$HERMES_DIR"/*.yaml . 2>/dev/null || true
+cp -r "$HERMES_DIR"/*.json . 2>/dev/null || true
+cp -r "$HERMES_DIR"/*.toml . 2>/dev/null || true
 [ -d "$HERMES_DIR/skills" ] && cp -r "$HERMES_DIR/skills" ./skills_backup
-# Holographic memory (SQLite database)
-[ -f "$HERMES_DIR/memory_store.db" ] && cp "$HERMES_DIR/memory_store.db" ./memory_store.db
-# AGENTS.md (auto-memory rules for coding tools)
+
+# Holographic memory — dump as SQL to avoid binary bloat
+# REQUIRES: sudo apt install sqlite3
+if [ -f "$HERMES_DIR/memory_store.db" ] && command -v sqlite3 &>/dev/null; then
+    sqlite3 "$HERMES_DIR/memory_store.db" ".dump" > ./memory_store.sql
+    echo "  ✅ memory_store.db (SQL dump)"
+elif [ -f "$HERMES_DIR/memory_store.db" ]; then
+    echo "  ⚠️ sqlite3 not installed, skipping database backup"
+fi
+
+# AGENTS.md
 [ -f "$HERMES_DIR/AGENTS.md" ] && cp "$HERMES_DIR/AGENTS.md" ./AGENTS.md
+
 # MCP Holographic server (source only, skip node_modules)
 if [ -d "$HERMES_DIR/mcp-holographic" ]; then
     mkdir -p ./mcp-holographic
-    cp "$HERMES_DIR/mcp-holographic"/{index.js,package.json,README.md} ./mcp-holographic/ 2>/dev/null
+    cp "$HERMES_DIR/mcp-holographic"/{index.js,package.json,README.md} ./mcp-holographic/ 2>/dev/null || true
 fi
+
 [ -d "$HERMES_DIR/cron" ] && cp -r "$HERMES_DIR/cron" ./cron_backup
+
+# Ensure .gitignore excludes binary DB files
+if ! grep -q "memory_store.db" .gitignore 2>/dev/null; then
+    echo "memory_store.db" >> .gitignore
+    echo "*.db" >> .gitignore
+fi
 
 cat > backup_info.md << EOF
 # Hermes Backup
@@ -62,8 +93,16 @@ cat > backup_info.md << EOF
 EOF
 
 git add -A
-git commit -m "🔄 Backup $TIMESTAMP" 2>/dev/null
-git push origin main 2>/dev/null && echo "✅ Backup: $TIMESTAMP" || echo "❌ Push failed"
+if git diff --cached --quiet; then
+    echo "ℹ️ No changes, skipping commit"
+    exit 0
+fi
+
+git commit -m "🔄 Backup $TIMESTAMP" || exit 1
+git push origin main 2>/dev/null && echo "✅ Backup: $TIMESTAMP" || {
+    git push origin master 2>/dev/null && echo "✅ Backup: $TIMESTAMP" || echo "❌ Push failed"
+}
+
 rm -rf "$BACKUP_DIR"
 ```
 
@@ -92,3 +131,12 @@ mkdir -p ~/.hermes/logs
    - Documentation listing stale file locations
    - MCP configs pointing to moved/deleted files
    **Rule: after any storage migration, search all scripts and configs for the old path before considering the migration done.**
+
+7. **sqlite3 dependency** — The backup script uses `sqlite3` CLI to dump `memory_store.db` as SQL (avoids pushing binary files that bloat the repo). If `sqlite3` is not installed, the database backup is silently skipped with a warning. Install with `sudo apt install sqlite3` on Debian/Ubuntu.
+
+8. **WSL crontab unreliability** — WSL instances are ephemeral; they start on-demand and stop when idle. Cron jobs scheduled via `crontab -e` will NOT run if WSL is sleeping/shutdown at the scheduled time. For reliable daily backup, consider:
+   - Use Hermes cron jobs (`hermes cron create`) which persist across WSL restarts
+   - Use Windows Task Scheduler to invoke `wsl.exe bash ~/.hermes/scripts/backup_to_github.sh`
+   - Run the backup manually when needed: `bash ~/.hermes/scripts/backup_to_github.sh`
+
+9. **Alternative: `hermes backup`** — Hermes has a built-in backup command that creates a zip archive of your entire `~/.hermes/` directory (config, skills, sessions, data). Use `hermes backup -o ~/hermes-backup.zip` for a full backup, or `hermes backup --quick` for a fast snapshot of critical state files only. Restore with `hermes import <zipfile>`. This is simpler than the GitHub script but doesn't provide version history.

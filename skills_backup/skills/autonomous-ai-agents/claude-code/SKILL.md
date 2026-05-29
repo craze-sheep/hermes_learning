@@ -707,19 +707,20 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 
 1. **Use `--max-turns`** in print mode to prevent runaway loops. Start with 5-10 for most tasks.
 2. **Use `--max-budget-usd`** for cost caps. Note: minimum ~$0.05 for system prompt cache creation.
-3. **Use `--effort low`** for simple tasks (faster, cheaper). `high` or `max` for complex reasoning.
-4. **Use `--bare`** for CI/scripting to skip plugin/hook discovery overhead.
+3. **Use `--effort low`** for simple tasks and reviews (faster, cheaper). `high` or `max` for complex reasoning.
+4. **Use `--bare`** for CI/scripting and reviews to skip plugin/hook discovery overhead.
 5. **Use `--allowedTools`** to restrict to only what's needed (e.g., `Read` only for reviews).
 6. **Use `/compact`** in interactive sessions when context gets large.
 7. **Pipe input** instead of having Claude read files when you just need analysis of known content.
 8. **Use `--model haiku`** for simple tasks (cheaper) and `--model opus` for complex multi-step work.
 9. **Use `--fallback-model haiku`** in print mode to gracefully handle model overload.
 10. **Start new sessions for distinct tasks** — sessions last 5 hours; fresh context is more efficient.
-11. **Don't give Claude Code 4+ large files at once** — reading 4 scripts (400-600 lines each) plus their spec docs exceeds the context window. Claude Code will autocompact repeatedly, eventually thrashing (autocompact fires 3x in 3 turns → abort). This wastes ~$9 and 20+ minutes. Split into batches: 2-3 scripts per invocation, or use Hermes `execute_code` for automated checks and reserve Claude Code for targeted deep review of specific levels.
-11. **Use `--no-session-persistence`** in CI to avoid accumulating saved sessions on disk.
+11. **Don't give Claude Code 4+ large files at once** — reading 4 scripts (400-600 lines each) plus their spec docs exceeds the context window. Claude Code will autocompact repeatedly, eventually thrashing (autocompact fires 3x in 3 turns → abort). This wastes ~$9 and 20+ minutes. Split into batches: 2-3 scripts per invocation, or use Hermes `execute_code` for automated checks and reserve Claude Code for targeted deep review of specific levels. For structured multi-block review workflows, see `references/block-based-review.md`.
+12. **Use `--no-session-persistence`** in CI to avoid accumulating saved sessions on disk.
 
 ## Pitfalls & Gotchas
 
+0. **Keep prompts SHORT and focused** — Users will say "一次问太多了" (too many at once). Never pack 7+ review criteria into one Claude Code invocation. One topic per invocation. For code review, use the block-based pattern (see `references/block-based-review.md`). A focused 2-sentence prompt outperforms a 20-line instruction wall.
 1. **Interactive mode REQUIRES tmux** — Claude Code is a full TUI app. Using `pty=true` alone in Hermes terminal works but tmux gives you `capture-pane` for monitoring and `send-keys` for input, which is essential for orchestration.
 2. **`--dangerously-skip-permissions` dialog defaults to "No, exit"** — you must send Down then Enter to accept. Print mode (`-p`) skips this entirely.
 3. **`--max-budget-usd` minimum is ~$0.05** — system prompt cache creation alone costs this much. Setting lower will error immediately.

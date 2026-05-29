@@ -29,6 +29,7 @@ Umbrella skill for WSL2 + Windows host operations: environment audits, GPU/CUDA/
 
 ## High-Value Rules
 
+- **WSL crontab is unreliable for scheduled tasks** — WSL instances are not persistent; they start on-demand and stop when idle. Cron jobs scheduled via `crontab -e` will NOT run if WSL is sleeping/shutdown at the scheduled time. For reliable scheduling, prefer Hermes cron jobs (`hermes cron create`) which persist across WSL restarts, or use Windows Task Scheduler to invoke WSL commands.
 - Never install Linux NVIDIA display drivers inside WSL2; Windows host driver supplies CUDA through WSL.
 - Use `/usr/lib/wsl/lib/nvidia-smi`, not bare `nvidia-smi`, when PATH is uncertain.
 - For Docker GPU, install/configure NVIDIA Container Toolkit and test with `docker run --rm --gpus all ... nvidia-smi`.

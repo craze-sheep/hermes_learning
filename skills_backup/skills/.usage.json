@@ -297,5 +297,18 @@
     "state": "active",
     "use_count": 1,
     "view_count": 1
+  },
+  "wsl-windows-environment": {
+    "archived_at": null,
+    "created_at": "2026-05-29T17:26:46.588511+00:00",
+    "created_by": null,
+    "last_patched_at": "2026-05-29T17:26:55.478516+00:00",
+    "last_used_at": "2026-05-29T17:26:46.595704+00:00",
+    "last_viewed_at": "2026-05-29T17:26:46.589760+00:00",
+    "patch_count": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   }
 }

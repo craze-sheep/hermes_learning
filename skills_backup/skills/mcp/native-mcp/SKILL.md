@@ -393,6 +393,22 @@ For Python-based servers, prefer `python -m mcp_server_fetch` over `uvx mcp-serv
 
 **Verification:** `hermes mcp test <name>` — check the "Connected" time. Anything over 2s means npx/uvx overhead.
 
+## Managing MCP Servers via CLI
+
+Use the `hermes mcp` CLI to permanently add/remove servers from `config.yaml`:
+
+```bash
+hermes mcp list              # Show all configured servers
+hermes mcp add NAME          # Add a server (--url or --command)
+hermes mcp remove NAME       # Remove a server (prompts for confirmation)
+hermes mcp test NAME         # Test connection to a server
+hermes mcp configure NAME    # Toggle which tools are enabled for a server
+```
+
+**Pitfall: Runtime removal does NOT persist.** If you remove an MCP server at runtime (e.g. via config editing or UI toggles that don't touch `config.yaml`), it will reappear on the next session. Always use `hermes mcp remove <name>` to permanently delete from `config.yaml`. The config file is a protected file that `patch`/`write_file` cannot edit — only `hermes mcp remove` or direct `hermes config edit` can modify it.
+
+**Pitfall: `config.yaml` is protected.** Tool-based file edits (`patch`, `write_file`) are denied for `~/.hermes/config.yaml`. Use CLI commands (`hermes mcp remove`, `hermes config set`, `hermes config edit`) to modify it.
+
 ## Dual Config Files (Hermes vs Claude Code)
 
 **Hermes reads MCP config from `~/.hermes/config.yaml` under `mcp_servers`.**

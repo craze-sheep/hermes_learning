@@ -27,8 +27,34 @@ Use [OpenCode](https://opencode.ai) as an autonomous coding worker orchestrated 
 - OpenCode installed: `npm i -g opencode-ai@latest` or `brew install anomalyco/tap/opencode`
 - Auth configured: `opencode auth login` or set provider env vars (OPENROUTER_API_KEY, etc.)
 - Verify: `opencode auth list` should show at least one provider
+- **Default model configured** (see below)
 - Git repository for code tasks (recommended)
 - `pty=true` for interactive TUI sessions
+
+## Config Setup
+
+After installing, set the default model in `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "model": "provider/model-name",
+  "disabled_providers": ["opencode"],
+  "provider": {
+    "your-provider": {
+      "models": { "model-name": { "name": "model-name" } },
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "your-key",
+        "baseURL": "https://api.example.com/v1"
+      }
+    }
+  }
+}
+```
+
+- `model`: Format `provider/model-name`, overrides built-in default
+- `disabled_providers`: Remove built-in `opencode` provider to avoid confusion
+- Inline API key in provider config works (no separate `opencode auth login` needed)
 
 ## Binary Resolution (Important)
 
@@ -225,7 +251,7 @@ opencode -m xiao/mimo-v2.5-pro  # interactive
   - `process(action="log", session_id="<id>")`
 - Avoid sharing one working directory across parallel OpenCode sessions.
 - Enter may need to be pressed twice to submit in the TUI (once to finalize text, once to send).
-- **`opencode run` may hang silently on review tasks** — When running large review prompts (e.g. "check 8 scripts against docs"), `opencode run` can sit at 0% CPU with 0 output lines for 5+ minutes then produce nothing. Symptom: `ps` shows 0% CPU, `/proc/<pid>/io` shows reads but near-zero writes. **Workaround:** use Claude Code or Codex for review tasks instead. OpenCode is better suited for implementation tasks. If you must use it for review, limit scope to 1-2 files and add `--thinking` flag.
+- **`opencode run` may hang silently on review tasks** — When running large review prompts (e.g. "check 8 scripts against docs"), `opencode run` can sit at 0% CPU with 0 output lines for 5+ minutes then produce nothing. Symptom: `ps` shows 0% CPU, `/proc/<pid>/io` shows reads but near-zero writes. **Workaround:** use Claude Code or Codex for review tasks instead. OpenCode is better suited for implementation tasks. If you must use it for review, limit scope to 1-2 files and add `--thinking` flag. Even with `--thinking`, large reviews may timeout at 120s — keep prompts focused.
 
 ## Verification
 

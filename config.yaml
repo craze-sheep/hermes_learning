@@ -558,6 +558,15 @@ custom_providers:
       name: mimo-v2.5-pro
   api_mode: chat_completions
   model: mimo-v2.5-pro
+- name: 9e
+  base_url: https://api.9e.lv/v1
+  api_key: sk-ncRXc4bvGGXDlG195eozyGs5BPqo7TssgQDoZD8cQJ0gZwAM
+  models:
+    gpt-5.5:
+      context_length: 1000000
+      name: gpt-5.5
+  api_mode: chat_completions
+  model: gpt-5.5
 mcp_servers:
   holographic:
     enabled: true

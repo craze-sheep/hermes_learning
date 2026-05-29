@@ -256,6 +256,19 @@ If you catch yourself doing any of these, delete the code and restart with TDD:
 
 **All of these mean: Delete code. Start over with TDD.**
 
+## Masked / Structured Prediction Edge Cases
+
+When implementing modules with padding masks, valid-object masks, graph edge masks, attention masks, or dynamic/static object masks, include degenerate-mask tests in the RED phase, not as an afterthought:
+
+- mixed valid + padding inputs
+- all-invalid / all-padding inputs
+- empty pair masks / no graph edges
+- static-only objects when dynamic masks drive loss
+- no future-target leakage for history-only predictors
+- finite outputs/losses under every empty-mask case
+
+For Transformer attention, an all-masked key padding mask can produce NaNs. Use a safe internal mask that temporarily unmasks one harmless token for all-invalid samples, then reapply the original semantic mask to outputs. See `references/masked-transformer-edge-cases.md` for a compact pattern.
+
 ## Verification Checklist
 
 Before marking work complete:

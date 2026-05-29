@@ -707,15 +707,59 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 
 1. **Use `--max-turns`** in print mode to prevent runaway loops. Start with 5-10 for most tasks.
 2. **Use `--max-budget-usd`** for cost caps. Note: minimum ~$0.05 for system prompt cache creation.
-3. **Use `--effort low`** for simple tasks and reviews (faster, cheaper). `high` or `max` for complex reasoning.
-4. **Use `--bare`** for CI/scripting and reviews to skip plugin/hook discovery overhead.
+3. **Use `--effort low`** for simple tasks (faster, cheaper). `high` or `max` for complex reasoning.
+4. **Use `--bare`** for CI/scripting to skip plugin/hook discovery overhead.
 5. **Use `--allowedTools`** to restrict to only what's needed (e.g., `Read` only for reviews).
-6. **Use `/compact`** in interactive sessions when context gets large.
-7. **Pipe input** instead of having Claude read files when you just need analysis of known content.
-8. **Use `--model haiku`** for simple tasks (cheaper) and `--model opus` for complex multi-step work.
-9. **Use `--fallback-model haiku`** in print mode to gracefully handle model overload.
-10. **Start new sessions for distinct tasks** — sessions last 5 hours; fresh context is more efficient.
-11. **Don't give Claude Code 4+ large files at once** — reading 4 scripts (400-600 lines each) plus their spec docs exceeds the context window. Claude Code will autocompact repeatedly, eventually thrashing (autocompact fires 3x in 3 turns → abort). This wastes ~$9 and 20+ minutes. Split into batches: 2-3 scripts per invocation, or use Hermes `execute_code` for automated checks and reserve Claude Code for targeted deep review of specific levels. For structured multi-block review workflows, see `references/block-based-review.md`.
+6. **Pipe input** instead of having Claude read files when you just need analysis of known content.
+7. **Use `--model haiku`** for simple tasks (cheaper) and `--model opus` for complex multi-step work.
+8. **Use `--fallback-model haiku`** in print mode to gracefully handle model overload.
+9. **Start new sessions for distinct tasks** — sessions last 5 hours; fresh context is more efficient.
+10. **Don't give Claude Code 4+ large files at once** — reading 4 scripts (400-600 lines each) plus their spec docs exceeds the context window. Claude Code will autocompact repeatedly, eventually thrashing (autocompact fires 3x in 3 turns → abort). This wastes ~$9 and 20+ minutes. Split into batches: 2-3 files per invocation, or use Hermes `execute_code` for automated checks and reserve Claude Code for targeted deep review of specific levels.
+11. **Use `--no-session-persistence`** in CI to avoid accumulating saved sessions on disk.
+
+## Block-by-Block Code Review Workflow
+
+When doing structured code review with Claude Code, **always break into small focused blocks**. One large prompt with many files and many questions WILL timeout.
+
+### Proven Pattern (tested with 120s timeout on RTX 4060)
+
+```bash
+# GOOD: 1-2 files, 1 focused question, bare mode
+claude -p "Review encoder.py. Check shape bugs and padding mask. Brief." \
+  --bare --effort low --max-turns 5
+
+# BAD: 4+ files, many questions, full mode
+claude -p "Review all model files. Check shapes, masks, loss, GPU, checkpoint, resume, NaN..." \
+  --max-turns 8  # WILL TIMEOUT
+```
+
+### Recommended Review Block Sizes
+
+| Block | Files | Prompt Length | Expected Time |
+|-------|-------|---------------|---------------|
+| Single file | 1 | < 50 words | 30-60s |
+| Small block | 2-3 | < 30 words | 60-90s |
+| Summary check | all | < 20 words | 60-120s |
+
+### Anti-Patterns
+
+- **Don't list 7+ check items** in one prompt — Claude Code reads files then runs out of turns
+- **Don't use Chinese AND English mixed prompts** with `--bare` — homoglyph security scan may trigger approval
+- **Don't pipe `claude | python`** without approval — security scan flags it as interpreter injection
+- **Don't use `--max-turns 2`** for file reviews — Claude needs turn 1 to read, turn 2 to respond; 3 is the minimum
+
+### Working CLI for Fast Reviews
+
+```bash
+# Fastest review (bare + low effort + short prompt)
+claude -p "Read FILE. List bugs briefly." --bare --effort low --max-turns 5
+
+# JSON output for parsing
+claude -p "Review FILE" --bare --effort low --max-turns 5 --output-format json
+
+# Save to file
+claude -p "Review FILE" --bare --effort low --max-turns 5 > review.md
+```
 12. **Use `--no-session-persistence`** in CI to avoid accumulating saved sessions on disk.
 
 ## Pitfalls & Gotchas

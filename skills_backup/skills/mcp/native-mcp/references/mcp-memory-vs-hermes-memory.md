@@ -149,6 +149,13 @@ Even with holographic provider configured, Hermes's system prompt prominently sh
 ### Pitfall: WSL2 `ss -tlnp` doesn't show Windows ports
 Even with WSL2 `networkingMode=mirrored`, `ss -tlnp` does NOT show Windows host ports. Use `curl -s --connect-timeout 3 http://localhost:PORT/` or `powershell.exe -Command "Get-NetTCPConnection -LocalPort PORT"` to verify Windows services are listening.
 
+### Pitfall: Hermes fact_store wrapper doesn't expose all MCP server actions
+The holographic MCP server (`~/.hermes/mcp-holographic/index.js`) supports `dedup` and `merge` actions in its Zod schema, but Hermes's built-in `fact_store` tool wrapper (`plugins/memory/holographic/__init__.py`) only handles: add, search, probe, related, reason, contradict, update, remove, list. Calling `dedup` or `merge` through Hermes returns "Unknown action".
+
+**Impact:** Claude Code, Codex, and OpenCode (direct MCP clients) CAN use dedup/merge. Hermes CANNOT — it goes through the Python wrapper which filters actions.
+
+**Workaround:** Use `delegate_task` to have Claude Code run dedup, or call the MCP server directly via terminal.
+
 ## Verification
 
 ```bash

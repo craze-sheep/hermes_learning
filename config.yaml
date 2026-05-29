@@ -354,7 +354,7 @@ delegation:
   subagent_auto_approve: false
 prefill_messages_file: ''
 goals:
-  max_turns: 20
+  max_turns: 50
 skills:
   external_dirs: []
   template_vars: true

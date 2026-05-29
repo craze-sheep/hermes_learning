@@ -170,6 +170,8 @@ Platform docs: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/
 
 **Holographic shared memory:** See `references/holographic-memory-setup.md` for setting up shared memory across all AI tools. Key: read-write separation with `fact_query` (readOnlyHint) and `fact_store` (destructiveHint). All four instruction files (AGENTS.md/CLAUDE.md) must be updated when tools change.
 
+**Memory backup & maintenance:** See `references/holographic-memory-backup-maintenance.md` for backup scripts, sqlite3 dependency, monthly cleanup, and the dedup/merge gap (MCP server supports it but Hermes wrapper doesn't expose it).
+
 **GitHub backup:** See `references/github-backup-setup.md` for automated daily backup of Hermes config to a private GitHub repo via crontab.
 
 ### Sessions

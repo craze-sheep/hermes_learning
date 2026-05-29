@@ -183,3 +183,10 @@ When consolidating from file-based memory (MEMORY.md/USER.md) to holographic DB:
 **Implication**: Codex can only READ from holographic memory. Write operations must go through Hermes or Claude Code. This is by design — Codex's sandbox prevents destructive MCP operations.
 
 If you need Codex to write facts, use `delegate_task` to have Hermes do the write on Codex's behalf.
+
+## Backup & Maintenance
+
+See `references/holographic-memory-backup-maintenance.md` for:
+- Daily backup to GitHub (script + sqlite3 dependency)
+- Monthly cleanup of low-trust/expired facts
+- Dedup/merge gap (MCP server supports it, Hermes wrapper doesn't)

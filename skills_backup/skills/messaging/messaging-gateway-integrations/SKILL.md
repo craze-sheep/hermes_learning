@@ -53,3 +53,11 @@ Recommended architecture: one Hermes coordinator in the chat, with subprocess/su
 ## Support Files
 
 Absorbed platform-specific skills are preserved under `references/` with their original names.
+
+### Telegram B2B Task Protocol
+- `references/telegram-b2b-task-format.md` — The Telegram AI Team Bot-to-Bot protocol: task dispatch JSON format, required response framing (`<<<B2B_RESPONSE:job_id>>>` / `<<<B2B_DONE:job_id>>>` markers), MESSAGE + HANDOFF_SUMMARY structure, role assignments, hard rules, and directory exploration fallback technique.
+- `references/b2b-supervisor-dispatch-patterns.md` — Supervisor role decision framework: worker capability matching (Planner/Developer/Researcher/Tester), phased execution patterns for research tasks, batch sizing, handoff summary best practices, and common pitfalls.
+
+## Related Skills
+
+- `b2b-task-audit` (devops) — For reviewing completed B2B task artifacts: post-mortems, failure mode analysis, execution chain verification, and quality audits of artifacts/tasks/ directories.

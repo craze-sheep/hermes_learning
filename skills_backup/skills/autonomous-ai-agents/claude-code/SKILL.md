@@ -27,6 +27,29 @@ Delegate coding tasks to [Claude Code](https://code.claude.com/docs/en/cli-refer
 - **Version check:** `claude --version` (requires v2.x+)
 - **Update:** `claude update` or `claude upgrade`
 
+## Multi-Agent Topology
+
+Claude Code is NOT a passive tool that only Hermes calls. The relationship is bidirectional:
+
+```
+Hermes (this agent)
+  ├── Hermes skills → guide how Hermes calls Claude Code
+  ├── Hermes MCP tools (codegraph, context7, fetch, etc.)
+  │
+  └── Claude Code CLI
+        ├── Claude's own .claude/skills/ (auto-triggered by task matching)
+        ├── Claude's own MCP tools (via claude mcp add)
+        ├── Claude's own CLAUDE.md / rules/ (project context)
+        └── Claude's own hooks system (PreToolUse, PostToolUse, etc.)
+```
+
+Key points:
+- Claude Code has its own skill system (`.claude/skills/*.md`) that auto-triggers based on task matching — independent of Hermes skills
+- Claude Code can load MCP servers (`claude mcp add`) and call them autonomously
+- This skill document tells **Hermes** how to orchestrate Claude Code — Claude Code itself doesn't read this file
+- When Claude Code runs, it operates with its own system prompt, CLAUDE.md, hooks, and MCP tools
+- Don't describe the relationship as "Hermes calls Claude Code, Claude Code is passive" — both are autonomous agents with independent capabilities
+
 ## Two Orchestration Modes
 
 Hermes interacts with Claude Code in two fundamentally different ways. Choose based on the task.

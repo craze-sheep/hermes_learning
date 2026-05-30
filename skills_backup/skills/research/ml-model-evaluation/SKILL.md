@@ -20,9 +20,9 @@ Evaluate an ML model's architecture design and implementation against mainstream
 
 ## Workflow
 
-### Phase 1: Context Gathering (parallel)
+### Mode A: Quick Evaluation (few papers, parallel)
 
-Read these in parallel via `delegate_task` with 3 subtasks:
+For evaluating against 3-5 reference approaches, use parallel delegation:
 
 **Subtask A — Model Code Analysis**
 - Read all model source files (encoder, decoder, loss, config, main model)
@@ -41,6 +41,36 @@ Read these in parallel via `delegate_task` with 3 subtasks:
 - Use `mcp_context7_resolve_library_id` + `mcp_context7_query_docs` for library docs
 - Use `mcp_fetch_fetch` for arXiv paper details
 - Extract: core innovations, relevance to the project, implementation feasibility
+
+### Mode B: Deep Literature Survey (10+ papers, sequential)
+
+For comprehensive literature surveys (e.g., 50 papers with code-level optimization suggestions), use a **sequential** approach — it produces much higher quality results than parallel delegation.
+
+**Critical rule: Read ALL model code FIRST, then write paper notes.**
+
+Without understanding the codebase deeply, paper notes become generic "可借鉴的点" that don't connect to actual code. The user will notice and call it out.
+
+**Step 1: Read the entire model codebase (mandatory first step)**
+- Read EVERY .py file in the model directory using `terminal cat` (not read_file — it may report "unchanged" from prior context compaction)
+- Understand: data flow, each module's input/output shapes, loss function details, training loop
+- Write down: key design choices, obvious weaknesses, dimension mismatches
+- This step is NOT skippable. Generic paper notes without code context are worthless.
+
+**Step 2: Write paper notes one by one (NOT in parallel via subagents)**
+- For each paper, write a structured `notes.md` in the paper's folder
+- Every "可借鉴的点" must map to: specific file path + specific function + concrete code snippet
+- Use the 8-section template (see below)
+- Write 2-3 papers per turn, not more — quality requires attention
+
+**Why NOT to use subagents for this:**
+- Subagents with complex multi-step tasks (search paper → download PDF → clone code → read → write notes) keep getting interrupted or timing out (600s limit)
+- Subagents cannot maintain context across papers — each paper's suggestions should reference patterns from other papers
+- Subagents produce generic notes because they lack the codebase context from Step 1
+- Exception: subagents CAN be used for simple, single-responsibility tasks (e.g., "download these 5 PDFs")
+
+**Step 3: Update summary reports only AFTER all papers are done**
+- `01_literature_survey_summary.md` — paper list table + per-module comparison tables
+- `02_optimization_proposals.md` — prioritized optimization suggestions with code snippets
 
 ### Phase 2: Structured Comparison
 
@@ -112,6 +142,11 @@ Write to `<project>/优化建议.md` (or user-specified path) with:
 
 - **physics-simulation-datasets** (data-science/) — For generating, validating, and managing physics simulation video datasets. Use when the data pipeline needs work before model evaluation.
 
+## Support Files
+
+- `references/literature-survey-template.md` — 8-section template for paper notes with code-level suggestions
+- `references/example-model-analysis.md` — Example of the depth expected when analyzing a model codebase before writing paper notes
+
 ## Pitfalls
 
 - **Don't just copy architectures blindly.** Learn the *ideas* behind mainstream approaches, adapt to the project's constraints (GPU memory, data format, existing tests).
@@ -119,6 +154,15 @@ Write to `<project>/优化建议.md` (or user-specified path) with:
 - **Don't read entire repos.** Reference repos can be huge. Focus on core module files (attention.py, models.py, etc.), not tests/utils/configs.
 - **Always check existing tests.** Optimization suggestions must not break existing test coverage. Note which tests need updating.
 - **Plan-first when user requests it.** If user asks to "先写计划", write a plan document first with MCP/skill annotations per step, then execute.
-- **Parallel delegation is essential.** Module analysis, reference comparison, and literature search are independent — run them concurrently.
+- **Parallel delegation is essential for Mode A.** Module analysis, reference comparison, and literature search are independent — run them concurrently.
 - **Context7 has limited coverage.** Not all libraries are indexed. Fall back to reading local repo files when Context7 returns empty results.
 - **Web fetch may fail.** arXiv/Google Scholar may block automated fetches. Fall back to existing knowledge base and local papers.md.
+- **read_file may report "unchanged" after context compaction.** Use `terminal cat` instead when you need to re-read code files that were read in a prior context window.
+- **Subagents fail on complex multi-step tasks.** Tasks like "search → download → read → analyze → write" consistently time out (600s). Break into: (1) search/download in main session, (2) write notes in main session. Only delegate simple single-responsibility tasks.
+- **User will notice generic suggestions.** If you write "可以考虑用 attention 机制" without mapping to their specific code, they will ask "你真的都熟悉吗". Always connect to actual file paths and class names.
+- **Quality over speed is the default for deep research.** When given the choice, users prefer 50 papers done well over 50 papers done fast. Don't rush — write 2-3 papers per turn with full code-level detail.
+- **PDF downloads from arXiv often fail in batch scripts.** arXiv rate-limits or blocks bulk downloads. About 60-70% success rate in batch. Download PDFs one at a time with delays, or skip and focus on notes.md quality (which is what actually matters for optimization suggestions).
+- **arxiv URL format**: Use `https://arxiv.org/pdf/XXXX.XXXXX` without version number — it auto-redirects to latest. Adding version numbers like `v2` sometimes helps but often doesn't. The plain ID format is more reliable.
+- **WSL network for git clone is extremely slow.** GitHub cloning from WSL consistently times out or takes 5+ minutes per repo. Batch clone scripts with `wait` produce no output for minutes. Workaround: clone sequentially with 120s timeout, accept ~30-50% failure rate. Most important code can be read from GitHub web via `mcp_fetch_fetch` instead.
+- **50-paper survey takes a full session.** Writing 50 notes.md with 8 chapters each + code-level suggestions + 3 summary reports = ~4-6 hours of continuous work. Plan accordingly. Do NOT try to cram into a single turn — write 3-5 papers per turn.
+- **User says "我只看结果" (I only look at results):** This means stop asking clarifying questions and just produce the deliverable. Make reasonable defaults and execute. The user will correct if needed.

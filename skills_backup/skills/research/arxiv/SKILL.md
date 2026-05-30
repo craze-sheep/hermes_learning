@@ -267,6 +267,18 @@ curl -s "https://api.semanticscholar.org/graph/v1/author/search?query=Yann+LeCun
 - HTML (when available): `https://arxiv.org/html/{id}`
 - For local PDF processing, see the `ocr-and-documents` skill
 
+## Browser-Based Verification (Alternative to API)
+
+When verifying a batch of papers (e.g., for a literature survey), navigating to `https://arxiv.org/abs/<ID>` via browser tools can be more efficient than API calls because:
+- The page shows **conference info** in the Comments field (e.g., "Published at ICLR 2021")
+- You can visually confirm the paper is correct in one glance
+- The page structure is consistent: title → authors → abstract → metadata table
+
+For papers with unknown IDs, use the arXiv search page:
+`https://arxiv.org/search/?query=<title+keywords>&searchtype=all`
+
+The Comments field on arXiv pages often reveals the actual venue (conference/journal) that the API may not surface cleanly.
+
 ## ID Versioning
 
 - `arxiv.org/abs/1706.03762` always resolves to the **latest** version

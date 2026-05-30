@@ -501,6 +501,41 @@ for g in json.load(sys.stdin):
     print(f\"  {g['id']}  {g['description'] or '(no desc)':40}  {files}\")"
 ```
 
+## 11. Batch Cloning Pitfalls
+
+When running batch clone scripts (e.g., for research paper code collection):
+
+### Naming Mismatch / Duplicate Directories
+Scripts may use different numbering or naming conventions than existing directories. Before running:
+1. Check existing directory names
+2. Compare with script's target names
+3. If mismatch exists, either fix the script or run manually
+
+After running, check for duplicates:
+```bash
+# Find directories with same paper number but different suffixes
+ls -d */ | sed 's/_.*//' | sort | uniq -d
+```
+Clean up duplicates by keeping the one with more content or the canonical name.
+
+### Academic Repo Availability
+Expect 20-30% failure rate when cloning academic paper repos:
+- **DeepMind papers** (MuZero, Genie, etc.) — usually closed-source, use community reproductions
+- **NVIDIA papers** (WALT, etc.) — often behind gated access or unpublished
+- **Community reproductions** — may be taken down or renamed; try `author-name/repo` variations
+- **arXiv-only papers** — some never release code
+
+Strategy: clone what's available, document missing repos with reason (closed-source / no public code), and note which papers can still be analyzed from PDF alone.
+
+### Retry Pattern for Failed Clones
+```bash
+# Try alternative owner/repo combinations
+for owner in author-name lab-name community-name; do
+    git clone --depth 1 "https://github.com/$owner/repo-name.git" target_dir 2>/dev/null && break
+done
+```
+But don't spend excessive time — 2-3 attempts max per repo, then mark as unavailable.
+
 ## Quick Reference Table
 
 | Action | gh | git + curl |

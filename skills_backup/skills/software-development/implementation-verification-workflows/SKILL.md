@@ -1,9 +1,9 @@
 ---
 name: implementation-verification-workflows
-description: Use when checking implementation correctness against specs, coordinating independent AI/code reviews, generating similar code from templates, or reviewing project completion status before accepting work.
-tags: [verification, spec, code-review, multi-agent, templates, project-review, compliance]
+description: Use when checking implementation correctness against specs, coordinating independent AI/code reviews, generating similar code from templates, reviewing project completion status, or auditing documentation quality.
+tags: [verification, spec, code-review, multi-agent, templates, project-review, compliance, documentation, review]
+related_skills: [github-code-review, systematic-debugging]
 ---
-
 # Implementation Verification Workflows
 
 Umbrella skill for accepting or rejecting implementation work: spec-vs-code verification, multi-agent review, template-derived code generation checks, and project completion/progress review.
@@ -164,6 +164,14 @@ T1 论文调研 ──→ T2 代码收集 ──→ T3 数据加载器 ──→
 ```
 Each task has dependencies, and Claude Code reviews before marking complete.
 
+## Documentation Quality Review Pattern
+
+Use when the user asks to "review", "audit", or "审查" a project document (README, 项目说明, API doc, user guide). This is NOT about code diffs (github-code-review) or bug investigation (systematic-debugging) — it's about the DOCUMENTATION ITSELF.
+
+Methodology: break the document into logical modules, evaluate each module against 6 consistent dimensions (completeness, accuracy, consistency, maintainability, security, operability), check cross-module consistency, score each dimension, and produce priority-ranked recommendations.
+
+Full methodology and output template: `references/documentation-review.md`
+
 ## Pitfalls
 
 - Global parameter checks do not prove per-level or per-feature compliance.
@@ -181,3 +189,4 @@ Absorbed skills are preserved under `references/` by original name, including de
 - `references/slot-datamaking-t5-t10-review-implementation.md` — concrete module-design and TDD implementation case: physics/video tensor modules, multi-agent review gates, all-invalid Transformer mask guard, normalized-vs-raw label semantics, and config naming pitfalls.
 - `references/ml-conda-gpu-env-selection.md` — ML verification environment checklist: create/use the requested conda env, check WSL GPU visibility, install CUDA PyTorch when appropriate, and verify `torch.cuda.is_available()` inside the target env before trusting test results.
 - `references/physics-video-eval-inference-review.md` — review checklist for physics/video evaluation and inference modules: scene-level metric aggregation, collision mask/force-label consistency, device handling, checkpoint formats, and visualization coverage.
+- `references/documentation-review.md` — module-by-module documentation quality audit: 6-dimension evaluation (completeness, accuracy, consistency, maintainability, security, operability), severity classification, scoring, and priority-ranked recommendations. Use when user asks to review/audit a README, project doc, or API reference.

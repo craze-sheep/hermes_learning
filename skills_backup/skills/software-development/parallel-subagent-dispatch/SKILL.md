@@ -137,6 +137,31 @@ Each parallel task should be:
 - **Self-contained** with full context
 - **Verifiable** with a single command
 
+### User Preference: Minimal Task Size
+
+**The user strongly prefers the smallest possible task per subagent.** When in doubt, split further. Examples:
+- Literature research: **1 paper per subagent**, NOT 1 direction (7 papers) per subagent
+- Report writing: **1 section per subagent**, NOT the entire report
+- Code changes: **1 function per subagent**, NOT 1 module
+
+This means more subagent calls (30-50+ is normal), but each call completes reliably within the turn budget. The user explicitly stated: "宁可多调用，也不要一次塞太多" (prefer more calls over stuffing too much into one).
+
+**Never combine multiple deliverables into one subagent call.** If the task says "write A and B", dispatch two subagents: one for A, one for B.
+
+### Quality Check After Each Subagent
+
+After each subagent completes, **immediately check the output**:
+1. Does the file exist?
+2. Is the content complete (not truncated)?
+3. Does it match the expected format?
+
+If a subagent was interrupted or timed out, retry with an even simpler task (fewer search terms, shorter context).
+
+## References
+
+- `references/import-mismatch-recovery.md` — Fixing import errors after parallel refactoring
+- `references/literature-survey-pattern.md` — Reusable workflow for large-scale literature research with subagents
+
 ## Red Flags
 
 - Parallel tasks that share files

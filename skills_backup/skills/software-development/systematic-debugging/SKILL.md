@@ -274,6 +274,31 @@ This is NOT a failed hypothesis — this is a wrong architecture.
 
 ---
 
+## Pitfall: FP16/Half-Precision Overflow in masked_fill
+
+When using PyTorch AMP (automatic mixed precision), common sentinel values like `-1e9` or `-1e10` in `masked_fill` **overflow** `torch.float16` (max ≈ 65504). The error is:
+
+```
+RuntimeError: value cannot be converted to type at::Half without overflow
+```
+
+**Root cause:** The literal `-1e9` is cast to the tensor's dtype (half) during `masked_fill`, and -1e9 < -65504 (FP16 min).
+
+**Fix:** Replace `-1e9` with `-1e4` (or at most `-65504`). `-1e4` is the standard safe sentinel for FP16 masked attention logits.
+
+**Detection:** `search_files` for `-1e9` or `-1e10` across the model codebase. Also check `float('-inf')` which has the same issue in FP16 contexts.
+
+**Prevention:** When writing attention masking code, always use dtype-aware sentinels:
+```python
+# WRONG: overflows in FP16
+attn_logits.masked_fill(mask <= 0, -1e9)
+
+# RIGHT: FP16-safe
+attn_logits.masked_fill(mask <= 0, -1e4)
+```
+
+**Context:** This commonly appears in GAT-style attention, Transformer masking, and collision-masked aggregation in physics models. The error only manifests when AMP is enabled (which is the default for modern GPU training).
+
 ## Pitfall: Asserting Negatives Without Filesystem Verification
 
 **Never claim a feature, platform, tool, or capability "doesn't exist" or "isn't supported" based solely on documentation, skill text, or memory.** Documentation is often incomplete or outdated.

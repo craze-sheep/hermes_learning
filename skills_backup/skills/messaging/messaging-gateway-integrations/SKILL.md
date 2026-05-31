@@ -41,6 +41,16 @@ Keep the distinction clear:
 
 Recommended architecture: one Hermes coordinator in the chat, with subprocess/subagent/executor workers behind it. Multiple visible bot personas are useful only when the platform supports them safely and the coordination cost is justified.
 
+### Alternative: cc-connect Multi-Bot Relay
+
+For multi-agent group chat where each agent is a visible participant, **cc-connect** (GitHub: chenhg5/cc-connect, ⭐11.2k) is a Go-based bridge supporting 12 platforms. Hermes integrates via ACP (`type = "acp"`, `command = "hermes-acp"`). See `references/cc-connect-integration.md` for full config examples and setup. See `references/wechat-multi-agent-template.md` for a complete project template with 4 agents.
+
+## User Workflow Preferences
+
+- **Check before installing**: When exploring a new tool/integration, verify the repository and documentation first before attempting installation. Read README, check config examples, and understand the architecture before running install commands.
+- **Plan before executing**: For multi-step setups, create a plan with all steps, then execute. Don't start installing/configuring without a clear picture of what's needed.
+- **Skip user-dependent steps**: When a step requires user input (API keys, auth tokens, manual verification), mark it clearly and skip it. Focus on what can be automated.
+
 ## Common Pitfalls
 
 - WeChat `MEDIA:/path` may send only a text path, not an attachment; paste content or use another platform for files.
@@ -49,6 +59,8 @@ Recommended architecture: one Hermes coordinator in the chat, with subprocess/su
 - Duplicate `.env` keys cause silent confusion; clean existing platform keys before adding new ones.
 - Group bots often require explicit @-mentions and admin/robot permissions.
 - For multi-agent coding, chat is coordination; actual work should still happen through Hermes tools, subagents, or executor CLIs.
+- **cc-connect absolute paths in WSL/miniconda**: When agents are installed via conda/miniconda, binaries land in `~/miniconda3/bin/` which is NOT in PATH for non-interactive shells. cc-connect spawns agents in a clean shell, so `command = "claude"` fails with "command not found". Always use absolute paths in config.toml: `command = "/home/user/miniconda3/bin/claude"`. Verify with `bash -c "which claude"` (not login shell).
+- **npm global install into miniconda**: When system npm is missing, use miniconda's npm with explicit prefix: `~/miniconda3/bin/npm config set prefix ~/miniconda3 && ~/miniconda3/bin/npm install -g cc-connect`. Binary lands in `~/miniconda3/bin/cc-connect`.
 
 ## Support Files
 
@@ -56,7 +68,12 @@ Absorbed platform-specific skills are preserved under `references/` with their o
 
 ### Telegram B2B Task Protocol
 - `references/telegram-b2b-task-format.md` — The Telegram AI Team Bot-to-Bot protocol: task dispatch JSON format, required response framing (`<<<B2B_RESPONSE:job_id>>>` / `<<<B2B_DONE:job_id>>>` markers), MESSAGE + HANDOFF_SUMMARY structure, role assignments, hard rules, and directory exploration fallback technique.
-- `references/b2b-supervisor-dispatch-patterns.md` — Supervisor role decision framework: worker capability matching (Planner/Developer/Researcher/Tester), phased execution patterns for research tasks, batch sizing, handoff summary best practices, and common pitfalls.
+- `references/b2b-supervisor-dispatch-patterns.md` — Supervisor role decision framework: worker capability matching (Planner/Developer/Researcher/Tester), DONE semantics (task complete, not turn complete), single-worker dispatch rule, don't-modify-source rule, virtual environment requirement, phased execution patterns for research tasks, batch sizing, re-dispatch state verification, file numbering mismatch pitfall, and handoff summary best practices.
+- `references/experiment-execution-workflow.md` — ML/AI experiment execution workflow: baseline training, experiment comparison, metrics collection, execution order (low-risk first), common pitfalls (parameter mismatch, dependency failures, patch application).
+
+### cc-connect Multi-Agent Setup
+- `references/cc-connect-integration.md` — Full cc-connect setup: ACP config, 4-agent example (Hermes + Claude Code + Codex + OpenCode), verification steps, setup scripts pattern, and non-ACP agent patterns (ReasonX).
+- `references/wechat-multi-agent-template.md` — Complete project template for WeChat multi-agent group chat: directory structure, quick start, agent specializations, and usage patterns.
 
 ## Related Skills
 

@@ -31,3 +31,15 @@ conda run -n model python -c "import torch; print(torch.__version__); print(torc
 ```
 
 Use this as a verification/setup pattern, not as a permanent claim about a machine: CUDA version, driver, and environment name may differ by project/user.
+
+## Common AMP/FP16 Training Failures
+
+When running training with AMP (automatic mixed precision, the default for modern GPU training), watch for these issues:
+
+1. **`masked_fill` with `-1e9` overflows FP16.** Error: `RuntimeError: value cannot be converted to type at::Half without overflow`. Fix: use `-1e4` instead. Scan codebase with `search_files` for `-1e9` or `-1e10`.
+
+2. **`GradScaler` / `autocast` deprecation warnings.** PyTorch 2.x deprecates `torch.cuda.amp.GradScaler()` → `torch.amp.GradScaler('cuda')` and `torch.cuda.amp.autocast()` → `torch.amp.autocast('cuda')`. These are FutureWarnings, not errors — training still works. Don't fix these unless the task explicitly asks for warning cleanup.
+
+3. **Batch size auto-tuning.** Many training scripts auto-tune batch size to fit VRAM. If training OOMs, check if the script has a `find_working_config` or similar function. The tuned batch size may differ from the default.
+
+4. **First-run error vs. subsequent success.** If training fails on first run but the error is environment-related (FP16 overflow, missing dependency), fix the source code and re-run. Don't assume the fix didn't work — re-run and check the full output including epoch metrics.

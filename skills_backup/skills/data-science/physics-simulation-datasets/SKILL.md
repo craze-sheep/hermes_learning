@@ -73,6 +73,29 @@ Before architecture decisions, inspect every modality (`npz`, `object_static.jso
 - force matrix → sparse edge features/GNN layer
 - multi-task losses → RGB/depth/mask/physics/force consistency
 
+## Dataset Train/Test Splitting
+
+When splitting the dataset for training:
+
+1. **Output location** — create `train/` and `test/` at the **project root** (e.g. `slot-datamaking/train/`), NOT inside `database/`. The database directory stays pristine.
+2. **Use symlinks, not copies** — symlink each sample directory from `database/S{scene}/L{level}/{sample_id}` into `train/S{scene}/L{level}/{sample_id}`. Preserves directory hierarchy, zero extra disk, data access is transparent to all code.
+3. **Split per level** — iterate each `S*/L*/` directory independently, shuffle samples with a fixed seed, split at the desired ratio (typically 80/20). Every level must maintain the exact ratio.
+4. **Verification pitfall** — `ls -d "$dir"*/` does NOT reliably count symlinked directories. Always use `find "$dir" -maxdepth 1 -type l | wc -l` for accurate symlink counts.
+5. **Also produce text lists** — write `train.txt` and `test.txt` inside `database/` with one absolute path per line, for scripts that prefer flat path lists over directory traversal.
+
+```python
+# Core splitting logic
+import os, random
+random.seed(42)
+for scene_dir in sorted(scene_dirs):
+    for level_dir in sorted(level_dirs):
+        samples = [d for d in os.listdir(level_dir) if d.isdigit()]
+        random.shuffle(samples)
+        split_idx = int(len(samples) * 0.8)
+        # symlink train[:split_idx] -> train/S/L/sample
+        # symlink train[split_idx:] -> test/S/L/sample
+```
+
 ## Related Skills
 
 - **ml-model-evaluation** (research/) — For evaluating existing model architectures against mainstream approaches and writing optimization suggestions. Use when the model code already exists and needs architectural review.

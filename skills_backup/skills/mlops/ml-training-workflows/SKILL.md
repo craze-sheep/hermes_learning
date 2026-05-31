@@ -334,7 +334,69 @@ else:
     model.load_state_dict(ckpt)  # raw state dict
 ```
 
-## 10. Data Pipeline for Custom Datasets
+## 10. Experiment Isolation: Copy Before Modifying
+
+**User preference (strong):** Never modify source model code (`ai_model/`, `src/model/`, etc.) when running experiments. Always copy to a working directory first.
+
+```bash
+# WRONG: modifies source
+cd model && python ai_model/train.py --mode small
+
+# RIGHT: copy, fix, run from copy
+cp -r ai_model experiments/baseline/model
+# apply fixes to experiments/baseline/model/ only
+python experiments/baseline/model/train.py --mode small
+```
+
+**Workflow:**
+1. Copy source to `experiments/<name>/model/`
+2. Apply all modifications (bug fixes, config changes) to the COPY
+3. Run training from the copy
+4. Verify with `diff ai_model/ experiments/<name>/model/` — only intentional changes should appear
+5. Source code remains pristine for other experiments
+
+**Why:** Multiple experiments may run in parallel or sequentially. Modifying source creates cross-contamination between experiments and makes it impossible to diff experiment vs baseline.
+
+## 11. Pitfall: `__file__` Path Breakage When Copying Code
+
+**Problem:** Training scripts commonly compute paths relative to `__file__`:
+```python
+_this_dir = os.path.dirname(os.path.abspath(__file__))    # ai_model/
+_model_dir = os.path.dirname(_this_dir)                    # model/
+_project_root = os.path.dirname(_model_dir)                # project root (where database/ lives)
+```
+
+When you copy `ai_model/train.py` to `experiments/baseline/model/train.py`, the depth changes:
+```
+Original:  ai_model/train.py               → 2 levels to project root
+Copy:      experiments/baseline/model/train.py → 4 levels to project root
+```
+
+The script will look for `database/` at the wrong path and fail with:
+```
+ValueError: num_samples should be a positive integer value, but got num_samples=0
+```
+(because the dataset scan finds 0 files at the wrong location)
+
+**Fix:** Adjust the `__file__`-relative path calculation in the copy:
+```python
+# Original (2 levels from ai_model/):
+_project_root = os.path.dirname(_model_dir)
+
+# Adjusted (4 levels from experiments/baseline/model/):
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(_model_dir)))
+```
+
+**Systematic approach:** After copying, count the directory depth difference and add the right number of extra `os.path.dirname()` calls. Then verify:
+```python
+assert os.path.exists(os.path.join(_project_root, 'database')), f"Wrong root: {_project_root}"
+```
+
+**Other affected patterns:** Any code using `__file__` to locate sibling directories (data/, checkpoints/, configs/) will have the same issue.
+
+> See also: `references/multi-experiment-baseline-workflow.md` for the full pattern of running baseline + N experiments with copy-based isolation.
+
+## 12. Data Pipeline for Custom Datasets
 
 ### Scanning with pickle cache
 
@@ -358,6 +420,25 @@ def scan_with_cache(root_dir, scan_fn, cache_dir='.'):
         pickle.dump({'samples': samples, 'root_dir': root_dir}, f)
     return samples
 ```
+
+### Train/test splitting (stratified by category)
+
+When the dataset has a hierarchy (scene/level/sample), split **within each level** so every physics phenomenon is represented in both sets. Use a fixed seed for reproducibility, and output a stats table alongside the split files.
+
+```python
+# Core loop: for each level, shuffle and split
+random.seed(42)
+for level_dir in all_levels:
+    samples = sorted(os.listdir(level_dir))
+    random.shuffle(samples)
+    split_idx = int(len(samples) * 0.8)
+    train.extend(samples[:split_idx])
+    test.extend(samples[split_idx:])
+```
+
+**Outputs:** `train.txt` + `test.txt` (absolute paths, one per line) + `split_stats.txt` (per-level counts).
+
+> See `templates/split_train_test.py` for a complete ready-to-use script.
 
 ### Sliding window for temporal data
 

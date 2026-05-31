@@ -1,71 +1,60 @@
-# B2B Worker Contract — Rejection Examples from Real Sessions
-
-## Rejection Case 1: Worker Assignment Language (2026-05-31)
+## Rejection Case 4: Wrong Header Kind (2026-05-31)
 
 **Original rejected MESSAGE excerpt:**
 
 ```
-[B2B-20260531-000923][Planner][REPORT]
+[B2B-20260531-131141][Developer][完成]
 @TeamSupervisor_bot
 
-规划完成。已产出完整规划文档...
-
-供 Supervisor 决策参考：下一步需要 Researcher 执行论文获取和逐篇分析。
-建议按批次调度，每批5篇。
+已完成对项目的只读代码审查...
 ```
 
-**Rejection reason:** "worker REPORT 正文不能直接安排、指挥或指定其他 worker"
+**Rejection reason:** "worker 群消息只能使用 [B2B-20260531-131141][Developer][REPORT] 作为开头，不能使用 [B2B-20260531-131141][Developer][完成]。"
+
+**Root cause:** Used `[完成]` (Chinese for "completed") instead of the required `[REPORT]` kind. The outbound validator does `found_kind.upper() != "REPORT"` — only the exact word `REPORT` (case-insensitive) passes.
 
 **Fixed version:**
 
 ```
-供 Supervisor 决策参考：后续环节需要论文获取能力（arXiv搜索+PDF下载+代码clone）、
-深度论文分析能力（按7问模板填写）、跨论文横向对比能力、质量审查能力。
-建议分4批×5篇执行。
+[B2B-20260531-131141][Developer][REPORT]
+@TeamSupervisor_bot
+
+已完成对项目的只读代码审查...
 ```
 
-**Key fix:** Replaced "Researcher 执行" with capability descriptions. Changed "建议按批次调度" to "可分...执行" (descriptive, not prescriptive).
+**Key fix:** Changed `[完成]` → `[REPORT]`. Only `[REPORT]` is valid for worker messages. All other kinds (WORKING, STATUS, ASSIGN, DONE, ERROR, or any Chinese equivalent) are rejected.
 
-## Rejection Case 2: Internal Document Headers (same session)
+**Additional lesson:** The substantive analysis report was already written to `artifacts/tasks/.../files/project-analysis-report.md` in the first attempt. On retry, the report file was still on disk — only the Telegram MESSAGE header needed fixing. Don't redo work that's already saved; just fix the format.
 
-**Original (in plan document):**
-```markdown
-### 阶段 1：论文获取（Researcher 执行）
-### 阶段 2：逐篇分析（Researcher 执行）
-### 阶段 3：汇总对比表（Planner + Researcher 协作）
-### 阶段 4：质量审查（Tester 执行）
+---
+
+## Rejection Case 5: Message Too Long (2026-05-31)
+
+**Scenario:** Planner produced a detailed experiment screening strategy with tables, execution commands, risk assessments, and multi-phase plans — all inline in the Telegram MESSAGE.
+
+**Rejection reason:** `BadRequest: Message is too long` — Telegram enforces ~4096 character limit for bot messages. The full plan exceeded this.
+
+**Supervisor response:** "上条回复因太长被 Telegram 拒绝。请精简输出，控制在 500 字以内。"
+
+**Root cause:** Planner treated the Telegram MESSAGE as the primary deliverable and embedded the entire plan inline. The role contract (planner.md) says to produce Markdown-archivable output, but doesn't warn about Telegram's character limit.
+
+**Fixed approach:**
+1. Write the full plan to a file (e.g., `experiments/screening_plan.md`)
+2. Keep the Telegram MESSAGE as a short summary (~300-500 chars):
+   - What was planned (1 sentence)
+   - Key numbers (baseline, targets)
+   - Deliverable file path
+   - Next step recommendation
+
+**Example shortened MESSAGE:**
+```
+[B2B-20260531-201926][Planner][REPORT]
+@TeamSupervisor_bot
+
+筛选策略已产出：阶段1 smoke test(3步)筛无报错+loss下降，阶段2 候选完整训练(50步)对比baseline(0.5451)。
+建议先筛5个低风险实验。详见 experiments/screening_plan.md
+
+HANDOFF_SUMMARY: 筛选策略：smoke test→候选完整训练→对比baseline。详见文件。
 ```
 
-**Fixed version:**
-```markdown
-### 阶段 1：论文获取
-### 阶段 2：逐篇分析
-### 阶段 3：汇总对比表
-### 阶段 4：质量审查
-```
-
-**Lesson:** Even internal Markdown documents should not assign workers by name. Use capability-neutral descriptions.
-
-## Rejection Case 3: Scheduling Language (same session)
-
-**Original:**
-```markdown
-## 七、分批调度建议（供 Supervisor 决策参考）
-
-后续执行环节需要的能力：
-
-1. **Researcher — 论文获取批次：** 分4批，每批5篇。每批需要：arXiv/Semantic Scholar搜索 + PDF下载 + GitHub代码clone
-2. **Researcher — 逐篇分析批次：** 可与论文获取并行，每批处理5篇，需要深度阅读论文PDF并填写7问模板
-```
-
-**Fixed version:**
-```markdown
-## 七、执行能力需求（供 Supervisor 决策参考）
-
-后续环节需要以下能力：
-
-1. **论文获取能力：** 需要 arXiv/Semantic Scholar 搜索 + PDF下载 + GitHub代码clone。可分4批×5篇。
-2. **论文分析能力：** 需要深度阅读论文PDF并按7问模板填写结构化分析。可与论文获取并行。
-```
-
-**Key fix:** Removed "Researcher —" prefix from each capability. Changed from "调度建议" to "能力需求".
+**Key lesson:** The MESSAGE is a **notification**, not the deliverable. The deliverable goes in a file. If the plan is more than ~2000 chars, it MUST go in a file with only a summary in the MESSAGE.

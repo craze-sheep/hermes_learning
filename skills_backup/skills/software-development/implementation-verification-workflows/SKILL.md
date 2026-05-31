@@ -180,6 +180,7 @@ Full methodology and output template: `references/documentation-review.md`
 - Large review prompts can overflow context; batch files and keep prompts structured.
 - "只检查不修改" means no edits and no cleanup execution.
 - A file existing is not proof of completion; read content and inspect artifacts.
+- **String-replacement patching can silently fail.** When a code-generation script uses `str.replace` (or equivalent) to patch files, the replacement silently does nothing if the pattern doesn't match exactly. Common causes: escape character differences (`\\'` vs `'`), trailing whitespace, Windows vs Unix line endings, or minor code style variations in the target file. **Verification:** After patching, grep for a distinctive marker (e.g., `EXP003`, `# PATCHED`) in each target file. Zero markers = patch didn't land, even if the script reported success. This is especially critical for multi-experiment setups where each experiment applies different patches to copies of the same base code.
 
 ## Support Files
 

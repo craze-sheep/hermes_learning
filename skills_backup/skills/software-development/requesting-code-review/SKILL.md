@@ -30,6 +30,8 @@ quality gates, an independent reviewer subagent, and an auto-fix loop.
 **This skill vs github-code-review:** This skill verifies YOUR changes before committing.
 `github-code-review` reviews OTHER people's PRs on GitHub with inline comments.
 
+**Full codebase review:** For reviewing an entire codebase (not a diff), see `references/full-codebase-review-format.md` for the Blocking/Major/Minor/No Issue structured format with file:line references.
+
 ## Step 1 — Get the diff
 
 ```bash

@@ -31,6 +31,8 @@ HANDOFF_SUMMARY: <=300 Chinese characters for next worker
 
 ### Step 1: Read Task State
 
+**Always read the actual job JSON file first** — do not rely on conversation context or injected metadata prompts. The job file path is provided in the user message (e.g., `任务文件(JSON)：/path/to/job.json`).
+
 Read the task JSON `user_prompt` to extract:
 - Current short summary (当前短摘要) — what's been done
 - Already contacted roles (已联系过的角色)
@@ -101,6 +103,70 @@ When the analysis workload is large (10+ items):
 - Smaller batches (2-3) for very long/complex papers
 - Larger batches (8-10) for shallow analysis or simple items
 
+### Multi-Worker Parallel Dispatch (DAG Pattern)
+
+When multiple independent batches exist AND a synthesis step depends on them, dispatch all independent tasks in one Supervisor response with explicit dependency arrows:
+
+```
+R1 (Researcher, batch A) ──┐
+                            ├──→ P1 (Planner, synthesis)
+R2 (Researcher, batch B) ──┘
+```
+
+**Format for multi-worker dispatch in one response:**
+
+```
+<<<B2B_RESPONSE:{job_id}>>>
+
+## Supervisor 调度
+
+### 执行顺序
+R1 + R2 并行 → P1 依赖 R1+R2 完成
+
+### @crazysheep_researcher_bot — R1：[batch A description]
+- 任务 ID, 交付物, 具体输入列表, 输出路径
+- dependencies: 无
+
+### @crazysheep_researcher_bot — R2：[batch B description]
+- 任务 ID, 交付物, 具体输入列表, 输出路径
+- dependencies: 无
+
+### @crazysheep_decomposer_bot — P1：[synthesis description]
+- 任务 ID, 交付物, 输出路径
+- dependencies: R1 + R2 完成后执行
+
+<<<B2B_DONE:{job_id}>>>
+```
+
+**Key rules:**
+- Each sub-task gets its own task ID suffix (e.g., `-R1`, `-R2`, `-P1`)
+- Dependencies are stated explicitly in plain text
+- The synthesis task says "等待 R1 和 R2 完成后执行"
+- All tasks go in one Supervisor response — don't split into multiple responses
+
+### Re-dispatch Handling
+
+When the same underlying task is re-dispatched (new job ID, same user task):
+1. **Verify filesystem state** — check if workers from the previous dispatch actually produced output
+2. **If no progress** — re-dispatch with the same plan (workers may not have run)
+3. **If partial progress** — adjust the plan to cover only remaining work
+4. **If complete** — skip to synthesis or DONE
+
+The short summary (当前短摘要) is the primary source of truth, but **always verify against the filesystem**. Workers may have completed work the summary doesn't mention, or the summary may claim completion that doesn't exist on disk.
+
+### File Numbering Mismatch Pitfall
+
+When analysis files are numbered sequentially (01, 02, ...) but the source items have non-sequential IDs (paper #1-#7, #11-#13), the numbering won't match. This creates confusion about which items are analyzed.
+
+**Prevention:** When dispatching analysis tasks, instruct workers to use the **source ID** in the filename (e.g., `08-TransDreamer.md` for paper #8, not `11-TransDreamer.md`).
+
+**Detection:** When verifying state, don't just count files — read the first line of each analysis file to confirm which paper it covers. Example:
+```
+analysis/08-Genie.md → header says "Genie" → this is paper #11 in the plan
+```
+
+This mismatch means "10 files in analysis/" does NOT necessarily mean "papers #1-#10 are done".
+
 ## Role Contract File
 
 The Supervisor should read the role contract file (e.g., `artifacts/hermes-role-prompts/supervisor.md`) at the start of each dispatch. This file defines:
@@ -113,7 +179,37 @@ The role contract is **static** — it doesn't change between dispatches. But re
 
 ## Common Pitfalls
 
-### 1. Dispatching Without Verifying State
+### 0. Treating Injected Metadata as User Tasks (CRITICAL)
+The job file's `user_prompt` contains injected metadata that are NOT user tasks:
+- "项目目录：/path" — just context about the project location
+- "角色契约文件(已在会话启动时注入，仅作参考)" — reference file path
+- "真实工作目录：未指定" — working directory hint
+
+These are **system-injected context**, not actionable instructions. The Supervisor must:
+1. Read the actual `user_prompt` from the job JSON to find the real user task
+2. Ignore metadata lines that describe the environment, paths, or configuration
+3. Only act on the "用户需求" (user need) field
+
+**Anti-pattern:** Treating "项目目录：/home/lzy/project/telegrambots" as a task to read that directory. It's just telling you where the project lives.
+
+### 1. Output Format Violations (CRITICAL)
+The B2B markers are **strict framing** — the entire response must be between start and end markers:
+```
+<<<B2B_RESPONSE:{job_id}>>>
+[all content here]
+<<<B2B_DONE:{job_id}>>>
+```
+
+**Rules:**
+- Start marker: `<<<B2B_RESPONSE:{job_id}>>>` — on its own line, nothing before it
+- End marker: `<<<B2B_DONE:{job_id}>>>` — on its own line, nothing after it
+- NO content after the end marker — not even a closing remark or sign-off
+- The markers use the **Supervisor's job_id** from the task JSON (e.g., `supervisor-20260531131143-2ddf7983f59047e7`)
+- Worker dispatches use the **user's task ID** in the MESSAGE (e.g., `B2B-20260531-131141`)
+
+**Anti-pattern:** Adding "以上是我的调度决策" or any trailing text after `<<<B2B_DONE:...>>>`. The parsing system stops at the end marker.
+
+### 2. Dispatching Without Verifying State
 The short summary may claim "Phase 1 complete" but files might be missing. Always verify:
 ```bash
 # Check PDF count
@@ -134,6 +230,18 @@ For research tasks, the foundation batch (earliest/most cited papers) must be an
 ❌ Dispatching Developer for literature analysis (not their specialty)
 ✅ Match capabilities to phase requirements
 
+### Referencing Previous Task Outputs
+
+When dispatching a task that's similar to a previously completed task (e.g., same analysis request with a new task ID), include the previous report path in the dispatch message so the worker can build on it:
+
+```
+参考：此前已有一次类似分析（task B2B-20260531-131141），其报告在
+artifacts/tasks/B2B-20260531-131141/files/project-analysis-report.md。
+如果内容仍然适用，可引用并补充更新；如有新发现，请独立产出完整报告。
+```
+
+This avoids redundant work and lets the worker focus on new findings or updates.
+
 ### 5. Not Using Real Bot Username
 ❌ @Planner, @Researcher, @Developer
 ✅ @crazysheep_decomposer_bot, @crazysheep_researcher_bot, @crazysheep_developer_bot
@@ -141,16 +249,191 @@ For research tasks, the foundation batch (earliest/most cited papers) must be an
 ### 6. Forgetting to Include Task ID
 The MESSAGE must include the original task ID (e.g., B2B-20260531-022711), not the supervisor's job ID.
 
+### 7. DONE Semantics: Task Complete, Not Turn Complete (CRITICAL)
+The DONE marker in the Telegram group means **the entire task is finished** — not "my dispatch turn is done." Workers interpret DONE as "stop working, the task is complete."
+
+**Wrong understanding:** DONE = "I've finished my Supervisor turn, waiting for worker response"
+**Correct understanding:** DONE = "The task is fully complete, no more work needed"
+
+**Consequences of premature DONE:**
+- Workers stop responding (they think the task ended)
+- User has to re-open the task manually
+- The B2B session closes
+
+**When to use each marker:**
+| Situation | Output |
+|-----------|--------|
+| Dispatching a worker | ASSIGN (no DONE) |
+| Waiting for worker response | STATUS (no DONE) |
+| Task truly complete | DONE |
+
+**Anti-pattern:** Outputting DONE after every dispatch round. Only DONE when ALL deliverables are verified on disk.
+
+### 8. Single Worker Dispatch (One at a Time)
+Dispatch to **one Worker at a time**. Multiple Workers dispatched simultaneously may duplicate work.
+
+**Wrong:** @Developer do X, @Tester do Y (in same response)
+**Right:** @Developer do X → wait for report → @Tester verify X
+
+Exception: The DAG pattern describes parallel dispatch, but the user explicitly corrected this — one at a time avoids duplicated work. Only use parallel dispatch when tasks are truly independent and the user approves.
+
+### 9. Don't Modify Source Code — Work in Copies
+When the user has a source directory (e.g., `ai_model/`), NEVER modify it directly. Always copy to the working directory first.
+
+**Pattern:**
+```bash
+cp -r /path/to/source /path/to/working/copy
+# Then modify the copy
+```
+
+**Verification:** After copying, `diff` source vs copy to confirm only intended changes differ.
+
+### 10. Use Virtual Environment for All Execution
+When the user specifies a conda/venv environment, ALL Python execution commands must use it.
+
+**Wrong:** `python train.py`
+**Right:** `conda run -n model python train.py`
+
+Include the env activation in every dispatch message to Workers.
+
+### 11. Premature DONE on User Complaints
+Setting DONE when the task is incomplete — even for "health check" messages. If deliverables are missing on disk, any user message about it is a complaint, not a status inquiry. Respond with status + action (re-dispatch or pivot), NOT DONE.
+- **Trigger:** User says "咋没反应了", "你都设置done了但是任务还没完成啊", "咋回事啊"
+- **Wrong:** DONE + "在的！当前进展..." (treating it as a health check)
+- **Right:** Status report + re-dispatch to stuck worker, or pivot to direct execution
+- **Verification:** Before any DONE, check: are ALL deliverables present on disk? If not, don't DONE.
+
+### 12. Telegram Message Too Long (BadRequest)
+Telegram has a ~4096 character limit for bot messages. Long dispatch messages with inline code blocks, detailed requirements, and multiple steps will be rejected with `BadRequest: Message is too long`.
+
+**Solution:** Write detailed requirements to a file in the working directory, then reference it in the @ message:
+```
+详细要求：读取 /path/to/requirements.md 并执行。
+简述：[one-line summary]
+```
+
+**Anti-pattern:** Putting full training commands, config details, and step-by-step instructions all in the @ message.
+**Correct pattern:** Write `requirements.md` → short @ message referencing the file.
+
+### 13. Infinite Re-dispatch Loop
+Re-dispatching the same worker 5+ times without ever pivoting. After 3 failed dispatches with zero output on disk, pivot to doing the work directly. See "Pivot to Direct Execution" section above.
+
 ## When to DONE
 
 Finish with DONE only when:
-- All requested deliverables are complete
+- All requested deliverables are **verified on disk** (not just claimed in summaries)
 - Or a clear limitation has been explained and accepted
 
 Do NOT DONE when:
 - Only some items have been analyzed
 - The comparison table hasn't been created
 - Resources are incomplete and could be retried
+- A worker was dispatched but hasn't produced output yet (re-dispatch or pivot instead)
+- The user is asking about an incomplete task (even if phrased as a question)
+
+**Anti-pattern (learned the hard way):** Setting DONE for a "health check" when the underlying task is genuinely incomplete. The user said "你都设置done了但是任务还没完成啊" — the Supervisor had treated "咋没反应了" as a pure status inquiry and set DONE, but the task had 5/20 papers unfinished. The rule: **if the task is incomplete, a user message about it is NOT a health check — it's a complaint about stalled progress. Respond with status + re-dispatch or pivot, NOT DONE.**
+
+### Simple Informational Queries → DONE (No Dispatch)
+
+Questions like "who are you", "introduce the team", "what can you do" are NOT tasks requiring worker dispatch. Answer directly with DONE and the information requested. Do NOT dispatch to Planner/Researcher/Developer/Tester for pure introductions or capability inquiries.
+
+**Pattern:**
+```
+<<<B2B_RESPONSE:{job_id}>>>
+
+TARGET_ROLE: DONE
+
+MESSAGE: @user Here's the team introduction...
+[content answering the question]
+
+HANDOFF_SUMMARY: 用户询问团队介绍，属简单信息查询，直接 DONE 回复。
+
+<<<B2B_DONE:{job_id}>>>
+```
+
+### Health Check vs. Complaint Distinction
+
+| User Message | Is it a Health Check? | Correct Response |
+|---|---|---|
+| "还在吗" / "are you there" (task complete) | ✅ Yes | DONE + status |
+| "进度怎么样" (task in progress, workers active) | ✅ Yes | DONE + progress report + nudge if needed |
+| "你们是谁" / "介绍团队" | ✅ Yes — informational | DONE + direct answer |
+| "咋没反应了" (task incomplete, worker stuck) | ❌ No — it's a complaint | Status + re-dispatch or pivot, NOT DONE |
+| "你都设置done了但是任务还没完成啊" | ❌ No — it's a correction | Apologize, re-dispatch or pivot, NOT DONE |
+| "咋回事啊，不安排继续了" (task incomplete) | ❌ No — it's a complaint | Status + re-dispatch or pivot, NOT DONE |
+
+**Rule of thumb:** If the task has unfinished deliverables, ANY user message about it — even phrased as a question — is a complaint about stalled progress, not a health check. Re-dispatch or pivot. Only DONE when deliverables are verified complete on disk.
+
+### Health Check / Status Inquiry Handling
+
+When the user message is a **genuine** status check (task is complete or workers are actively producing output), respond with DONE and a status report. Do NOT dispatch to workers — this is not a new task.
+
+**Pattern:**
+```
+<<<B2B_RESPONSE:{job_id}>>>
+
+在的！当前进展：
+
+✅ **已完成 X/N：**
+- [list completed items]
+
+❌ **待完成：**
+- [list pending items]
+
+@target_bot — [brief nudge if a worker is stuck]
+
+<<<B2B_DONE:{job_id}>>>
+```
+
+Key rules:
+- Use DONE, not a worker dispatch — health checks are not actionable work items
+- Give a clear progress summary with ✅/❌ markers
+- If a worker is stuck, include a brief nudge in the MESSAGE (this is visible to the user and the worker)
+- Don't over-explain or apologize — just report state and any pending actions
+
+### Worker "Stuck" Re-dispatch
+
+When a worker has been dispatched but hasn't produced output (no files on disk), the Supervisor should:
+1. Verify filesystem state — confirm the worker's expected output is truly missing
+2. Re-dispatch with the same task — workers may not have run due to timing, queue issues, or message delivery failures
+3. Label as "催促" (nudge) in the dispatch — makes it clear this is a retry, not a new task
+4. Include the original task ID suffix (e.g., `-R2`) for traceability
+
+Do NOT:
+- Assume the worker failed — they may simply not have been invoked yet
+- Change the task scope — keep the same deliverables and format requirements
+- Escalate to a different worker — the original worker's capabilities are still the right match
+
+### Pivot to Direct Execution (CRITICAL)
+
+When a worker has been dispatched **3+ times** without producing any output on disk, the Supervisor must **pivot to doing the work directly** instead of continuing to re-dispatch. Repeated dispatches that never get picked up are a strong signal that the worker invocation mechanism is broken (e.g., CLI context where @mentions don't trigger real processes, worker queue backlog, or bot offline).
+
+**Pivot trigger:** 3 dispatches to the same worker for the same sub-task, zero files produced on disk.
+
+**Pivot pattern:**
+1. Verify one final time that the expected output is truly missing
+2. Announce the pivot: "Researcher 调度未被拾起，现亲自完成剩余工作"
+3. Execute the work directly using available tools (web search, file write, code repos)
+4. Update the comparison table / deliverables with the new results
+5. DONE — don't re-dispatch to the worker after completing the work yourself
+
+**Why this matters:** The Supervisor has access to the same tools (web, file, browser) that workers use. The B2B protocol is a coordination mechanism, not a capability constraint. If coordination fails, the Supervisor should still deliver.
+
+**Anti-pattern (learned the hard way):**
+```
+Round 1: @Researcher please do R2 → no pickup
+Round 2: @Researcher 催促 R2 → no pickup
+Round 3: @Researcher 再次催促 R2 → no pickup
+Round 4: @Researcher 请立即执行 R2 → no pickup
+Round 5: @Researcher ... → STILL no pickup, user frustrated
+```
+**Correct pattern:**
+```
+Round 1: @Researcher please do R2 → no pickup
+Round 2: @Researcher 催促 R2 → no pickup
+Round 3: @Researcher 最后催促 R2 → no pickup
+Round 4: Supervisor pivots, does R2 directly, DONE
+```
 
 ## Architectural Insight: Stateless Supervisor with Stateful Summary
 

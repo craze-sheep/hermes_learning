@@ -36,6 +36,8 @@ Umbrella skill for WSL2 + Windows host operations: environment audits, GPU/CUDA/
 - In WSL, translate paths: `C:\Users\...` → `/mnt/c/Users/...`, `D:\` → `/mnt/d/`.
 - Launch Windows GUI apps via PowerShell with an explicit Windows working directory; avoid inheriting WSL UNC paths.
 - Use conda for Python project isolation; source `conda.sh` before `conda activate`.
+- **Miniconda npm global installs**: When system npm is missing or broken, use miniconda's npm with explicit prefix: `~/miniconda3/bin/npm config set prefix ~/miniconda3 && ~/miniconda3/bin/npm install -g <package>`. Binary lands in `~/miniconda3/bin/`. This is needed for tools like cc-connect, claude-code, codex, opencode when installed via npm in a conda-managed WSL env.
+- **Miniconda binaries not in non-interactive PATH**: Binaries in `~/miniconda3/bin/` are only in PATH when conda is activated (login shell). Background services, cc-connect agent spawning, and `bash -c` commands won't find them. Always use absolute paths in config files: `command = "/home/user/miniconda3/bin/tool"`. Verify with `bash -c "which tool"` not `bash -l -c`.
 - For pip commands in CJK-path projects, run from `/tmp` or another ASCII path to avoid terminal watchdog/path issues.
 - For quick server restarts, check ports and TIME_WAIT; bind to `127.0.0.1` or choose a new port when needed.
 - WSLg shared-memory corruption is fixed by Windows `wsl --shutdown`, not by app-level GL flags.

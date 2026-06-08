@@ -53,13 +53,14 @@ For multi-agent group chat where each agent is a visible participant, **cc-conne
 
 ## Common Pitfalls
 
-- WeChat `MEDIA:/path` may send only a text path, not an attachment; paste content or use another platform for files.
+- WeChat file sending works via two methods (verified 2026-06): (1) include `MEDIA:/absolute/path` in your regular response text — the system delivers it natively as an image/file; (2) call `send_message(action='send', target='weixin', message='MEDIA:/path')` explicitly. Both return success. For images, prefer method (1) for simplicity. For sending multiple files or explicit delivery, use method (2). The old limitation ("MEDIA: only sends text path") may have been resolved by platform updates.
 - WeChat systemd gateway services do not inherit shell proxy variables; add proxy env to the service when `ilinkai.weixin.qq.com` is unreachable.
 - QQ bots require correct intents and production publication; sandbox mode only reaches test channels.
 - Duplicate `.env` keys cause silent confusion; clean existing platform keys before adding new ones.
 - Group bots often require explicit @-mentions and admin/robot permissions.
-- For multi-agent coding, chat is coordination; actual work should still happen through Hermes tools, subagents, or executor CLIs.
-- **cc-connect absolute paths in WSL/miniconda**: When agents are installed via conda/miniconda, binaries land in `~/miniconda3/bin/` which is NOT in PATH for non-interactive shells. cc-connect spawns agents in a clean shell, so `command = "claude"` fails with "command not found". Always use absolute paths in config.toml: `command = "/home/user/miniconda3/bin/claude"`. Verify with `bash -c "which claude"` (not login shell).
+- **For multi-agent coding, chat is coordination; actual work should still happen through Hermes tools, subagents, or executor CLIs.**
+- **B2B Supervisor dispatch uses tmux pane capture, not send_message.** When acting as Supervisor in a Telegram AI Team B2B task (dispatched via job JSON to a tmux session), output the B2B response format directly — the service captures the pane and posts to Telegram. Do NOT call `send_message()` — Telegram is typically not configured in the CLI agent's Hermes instance. See `references/b2b-supervisor-dispatch-patterns.md` for the full CLI/tmux dispatch pattern.
+- **cc-connect absolute paths in WSL/miniconda**
 - **npm global install into miniconda**: When system npm is missing, use miniconda's npm with explicit prefix: `~/miniconda3/bin/npm config set prefix ~/miniconda3 && ~/miniconda3/bin/npm install -g cc-connect`. Binary lands in `~/miniconda3/bin/cc-connect`.
 
 ## Support Files

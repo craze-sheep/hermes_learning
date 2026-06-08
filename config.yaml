@@ -511,7 +511,6 @@ streaming:
   enabled: false
 platform_toolsets:
   cli:
-  - mcp-codegraph
   - browser
   - clarify
   - code_execution

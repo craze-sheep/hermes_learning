@@ -41,15 +41,64 @@ dynamic/{frame}/
   force_matrix.json     # {object_order: [1,2,...], force_matrix: 10×10 with [fx,fy,fz] or null}
 ```
 
-### Attribute encoding (attr_dim=14)
+### Attribute encoding (attr_dim=13 after unification)
 ```
 [0:3]   size (3D)
 [3:6]   lateralFriction, rollingFriction, spinningFriction
 [6]     restitution
 [7]     mass
 [8]     static flag
-[9:13]  object_type one-hot (ground/sphere/box/cylinder)
+[9:12]  object_type one-hot: sphere[1,0,0], cube[0,1,0], cylinder[0,0,1]
 ```
+
+### TYPE_MAP Unification (2026-06-01 decision)
+
+The dataset has 7 raw object_type strings but only 3 physical shapes in PyBullet:
+
+| Raw type | PyBullet shape | static | Unified to |
+|----------|---------------|--------|-----------|
+| ground | kb.Cube | true | cube |
+| sphere | kb.Sphere | false | sphere |
+| cube | kb.Cube | false | cube |
+| cylinder | kb.Cylinder | false | cylinder |
+| wall | kb.Cube | true | cube |
+| ramp | kb.Cube | true | cube |
+| obstacle | kb.Cube | true | cube |
+
+Code fix in `model/ai_model/dataset.py`:
+```python
+TYPE_MAP = {'sphere': 0, 'cube': 1, 'cylinder': 2}
+NUM_TYPES = 3
+TYPE_ALIAS = {'ground': 'cube', 'box': 'cube', 'wall': 'cube', 'ramp': 'cube', 'obstacle': 'cube'}
+```
+
+Config fix in `model/ai_model/config.py`:
+```python
+attr_dim: int = 13  # was 14
+```
+
+Old checkpoints incompatible — retrain from scratch.
+
+**Fastest way to audit types: read generation scripts, not the database:**
+```bash
+for s in S1 S2 S3 S4 S5 S6 S7 S8; do
+  script="task/task6-脚本编写/generate_${s,,}_dataset.py"
+  echo "$s: $(grep -oP '(sphere|cube|cylinder|wall|ramp|obstacle)_spec\(' "$script" | sort | uniq -c)"
+  echo "   LEVEL_TARGETS: $(grep 'LEVEL_TARGETS' "$script")"
+done
+```
+
+Object counts per scene (from generation scripts):
+- S1: sphere only (750 samples)
+- S2: cube + sphere + cylinder (680 samples)
+- S3: cube + sphere + cylinder + ramp (920 samples)
+- S4: sphere + cube + cylinder + wall (1150 samples)
+- S5: sphere + cylinder + cube (920 samples)
+- S6: sphere + cube + cylinder (920 samples)
+- S7: sphere + wall + cylinder + cube (1240 samples)
+- S8: sphere + cube + wall + cylinder + obstacle (1680 samples)
+
+max_objects=7 verified OK — actual max is 6 (2=100, 3=207, 4=69, 5=12, 6=12 samples).
 
 ### State encoding (state_dim=16)
 ```
@@ -69,6 +118,27 @@ state_std[10:13] = 5.0   # angular velocity
 state_std[13:16] = 50.0  # force
 force_std = [50, 50, 50]  # force matrix
 ```
+
+### Normalization Audit (2026-06-01)
+
+**What IS normalized:** RGB (→ [-1,1]), dyn_state (per-component std), force_matrix (÷50)
+**What is NOT normalized:** obj_attrs (14-dim: size, friction, mass, restitution, type one-hot)
+**Scale source:** Hardcoded in `_compute_norm_stats()` — NOT computed from data
+
+**Issues found:**
+1. `obj_attrs` has no normalization — mass spans 0 (static) to ~10 (heavy objects),
+   size varies by object type. MLP receives mixed-scale features.
+2. State normalization stds are rough estimates, not data-derived. If actual velocity
+   range is [-20, 20] but std=10.0, the normalized range is [-2, 2] — acceptable but
+   not optimal.
+3. Energy conservation loss denormalizes velocity via `vel_scale=10.0` (loss.py:160).
+   This must match the dataset's `state_std[7:10] = 10.0`. If either changes, the
+   other must follow.
+4. Energy loss uses `mass` from obj_attrs (unnormalized) with `vel` (denormalized) —
+   this is correct since mass is in physical units. But if mass were normalized,
+   the energy calculation would need adjustment.
+
+**Recommendation:** Run a data stats pass and replace hardcoded scales.
 
 ## Parameter Counts vs GPU Fit
 
@@ -128,3 +198,34 @@ conda run -n model python model/ai_model/train.py --mode smoke   # 3 steps
 conda run -n model python model/ai_model/train.py --mode small   # 20 steps
 conda run -n model python model/ai_model/train.py --mode train --epochs 5
 ```
+
+## Training Run Log (2026-05-31 → ongoing)
+
+Config: fused_dim=96, gru=96, gnn=96, history=12, predict=12, max_obj=7
+GPU: RTX 4060 Laptop (8GB), batch=16, AMP=True
+Data: 25504 train / 6376 val samples
+Params: 1,058,910
+
+**5-epoch results (training still in progress for epochs 6-10):**
+
+| Loss | Train Start | Train End | Val Start | Val End | Status |
+|------|------------|-----------|-----------|---------|--------|
+| Total | 1.28 | -9.95 | -3.53 | -10.22 | OK |
+| RGB | 0.63 | 0.007 | 0.007 | 0.004 | OK |
+| SSIM | 0.44 | 0.013 | 0.012 | 0.008 | OK |
+| LPIPS | 0.0 | 0.0 | 0.0 | 0.0 | ⚠ weight=0 |
+| Physics State | 0.053 | 0.002 | 0.003 | 0.002 | OK |
+| Collision Class | 0.26 | 0.0003 | 0.00001 | ~0 | OK |
+| Collision Effect | 0.081 | 0.002 | 0.0 | 0.0 | OK |
+| Seg Mask | 1.55 | 0.044 | 0.047 | 0.024 | ⚠ slight val ↑ |
+| Energy Conserv | 1.63 | 0.030 | 0.002 | 0.006 | ⚠ overfitting + oscillation |
+
+**Key findings:**
+- Energy conservation loss has CV=1.87 (most unstable), spikes getting worse per epoch
+  - Epoch 2: max spike 0.092, >0.05 = 9.8%, >0.1 = 0.0%
+  - Epoch 5: max spike 0.585, >0.05 = 18.3%, >0.1 = 17.1%
+  - Root cause: KE = 0.5*m*v² amplifies velocity errors via squaring
+  - Mitigation options: Huber loss, weight decay, gradient clipping on physics loss
+- LPIPS loss disabled (weight=0.0) — intentional or oversight?
+- Seg mask validation loss slight uptick at epoch 5 (0.0240 → 0.0241)
+- Overall convergence good, model learning across all active losses

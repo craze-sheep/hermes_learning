@@ -536,6 +536,40 @@ done
 ```
 But don't spend excessive time — 2-3 attempts max per repo, then mark as unavailable.
 
+## 11. Codebase Inspection (LOC & Language Breakdown)
+
+Analyze repositories for lines of code, language breakdown, and code-vs-comment ratios using `pygount`:
+
+```bash
+pip install pygount 2>/dev/null || pip install --break-system-packages pygount
+```
+
+### Basic Summary
+
+```bash
+cd /path/to/repo
+pygount --format=summary \
+  --folders-to-skip=".git,node_modules,venv,.venv,__pycache__,.cache,dist,build,.next,.tox,.eggs" \
+  .
+```
+
+**IMPORTANT:** Always use `--folders-to-skip` to exclude dependency/build directories.
+
+### Filter by Language
+
+```bash
+pygount --suffix=py --format=summary .
+pygount --suffix=py,yaml,yml --format=summary .
+```
+
+### JSON Output
+
+```bash
+pygount --format=json .
+```
+
+**Pitfalls:** Markdown shows 0 code lines (all classified as comments). JSON files show low counts. Use `wc -l` for accurate JSON line counts.
+
 ## Quick Reference Table
 
 | Action | gh | git + curl |

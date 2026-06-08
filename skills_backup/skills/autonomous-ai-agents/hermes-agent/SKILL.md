@@ -1033,6 +1033,34 @@ Full design notes, the exact emitted strings, and testing pitfalls:
 
 **Refactor-safety pattern (POSIX-equivalence guard):** when you extract inline logic into a helper that adds Windows/platform-specific behavior, keep a `_legacy_<name>` oracle function in the test file that's a verbatim copy of the old code, then parametrize-diff against it. Example: `tests/tools/test_code_execution_windows_env.py::TestPosixEquivalence`. This locks in the invariant that POSIX behavior is bit-for-bit identical and makes any future drift fail loudly with a clear diff.
 
+### Authoring In-Repo Skills
+
+Skills can live in two places:
+1. **User-local:** `~/.hermes/skills/<category>/<name>/SKILL.md` — created via `skill_manage(action='create')`
+2. **In-repo:** `skills/<category>/<name>/SKILL.md` — committed, shipped with the package. Use `write_file` + `git add`.
+
+**Required frontmatter** (validated by `tools/skill_manager_tool.py`):
+- Starts with `---` as first bytes (no leading blank line)
+- `name` present, ≤64 chars, lowercase + hyphens
+- `description` present, ≤1024 chars, starts with "Use when ..."
+- Non-empty body after closing `---`
+
+**Size:** Aim for 8-14k chars. Push past 20k → split into `references/*.md`.
+
+**Structure:** `# Title` → `## Overview` → `## When to Use` → body → `## Common Pitfalls` → `## Verification Checklist`
+
+**Workflow:**
+1. Survey peers in target category: `ls skills/<category>/`
+2. Draft with `write_file` to `skills/<category>/<name>/SKILL.md`
+3. Validate frontmatter locally (check `name`, `description` length)
+4. `git add` + `git commit`
+
+**Pitfalls:**
+- `skill_manage(action='create')` writes to `~/.hermes/skills/`, NOT the repo tree. Use `write_file` for in-repo.
+- Leading whitespace before `---` fails validation.
+- Current session won't see new skills until next session (loader is cached).
+- `related_skills` referencing user-local skills won't resolve for other clones.
+
 ### Commit Conventions
 
 ```

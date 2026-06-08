@@ -34,9 +34,9 @@ Tasks arrive as JSON in the user prompt with these fields:
 }
 ```
 
-## Response Format (MUST follow exactly)
+## Response Format — Worker (MUST follow exactly)
 
-The response MUST be framed with these markers. Nothing outside them.
+The **Worker** response MUST be framed with these markers. Nothing outside them.
 
 ```
 <<<B2B_RESPONSE:{job_id}>>>
@@ -47,6 +47,27 @@ HANDOFF_SUMMARY: 300 字以内给 Supervisor 的交接摘要
 
 <<<B2B_DONE:{job_id}>>>
 ```
+
+## Response Format — Supervisor
+
+The **Supervisor** response uses the same markers but with a different inner structure:
+
+```
+<<<B2B_RESPONSE:{supervisor_job_id}>>>
+
+TARGET_ROLE: Planner/Researcher/Developer/Tester/DONE
+MESSAGE: [B2B-YYYYMMDD-HHMMSS][Supervisor][ASSIGN/DONE/STATUS/ERROR] @real_bot_username description
+HANDOFF_SUMMARY: <=300 Chinese characters for next worker
+
+<<<B2B_DONE:{supervisor_job_id}>>>
+```
+
+**Key differences from Worker format:**
+- Supervisor includes `TARGET_ROLE` field (Worker does not)
+- Supervisor MESSAGE uses `[B2B-task-id][Supervisor][ASSIGN]` header format
+- Supervisor job_id is from the supervisor task JSON (e.g., `supervisor-20260602-...`)
+- Worker job_id is from the worker task JSON (e.g., `researcher-20260602-...`)
+- Both use `<<<B2B_RESPONSE:...>>>` / `<<<B2B_DONE:...>>>` markers
 
 ### Rules
 

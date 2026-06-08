@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: "Write implementation plans: bite-sized tasks, paths, code."
+description: "Write implementation plans: bite-sized tasks, paths, code. Also handles /plan mode (plan-only, no execution)."
 version: 1.1.0
 author: Hermes Agent (adapted from obra/superpowers)
 license: MIT
@@ -290,6 +290,19 @@ git commit -m "type: description"
 
 **Bad:** "Create the model file"
 **Good:** "Create: `src/models/user.py`"
+
+## Plan Mode (No Execution)
+
+When the user explicitly requests **planning only** (e.g., `/plan`, "make a plan", "plan this out"):
+
+- **Do not implement code** or edit project files except the plan markdown
+- **Do not run mutating commands**, commit, push, or perform external actions
+- You may inspect the repo with read-only tools when needed
+- **Deliverable:** a markdown plan saved under `.hermes/plans/YYYY-MM-DD_HHMMSS-<slug>.md`
+
+If the request is clear enough, write the plan directly. If underspecified, ask a brief clarifying question. After saving, reply with what you planned and the saved path.
+
+For the full planning methodology (task granularity, TDD, verification steps), continue reading the sections below.
 
 ## Execution Handoff
 

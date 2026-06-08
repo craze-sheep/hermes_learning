@@ -161,6 +161,10 @@ No extra dependencies needed — pymupdf covers split, merge, search, and text e
 
 ---
 
+## Exam PDF Extraction
+
+For extracting structured content (word banks, answer keys, question lists) from Chinese English exam PDFs (CET-4/6, IELTS, TOEFL), see `references/exam-pdf-extraction.md` — includes regex patterns, multi-page handling, and batch processing.
+
 ## Notes
 
 - `web_extract` is always first choice for URLs

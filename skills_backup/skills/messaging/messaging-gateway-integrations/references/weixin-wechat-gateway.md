@@ -160,7 +160,11 @@ WSL2 cannot reach the WeChat API directly. You need a proxy configured in the sy
 - **No multi-bot group chat:** Creating a group with multiple Hermes bots requires multiple WeChat accounts (each needs a phone number)
 - **Ban risk:** Third-party integrations may be flagged by WeChat
 - **No QQ support:** QQ requires enterprise certification, not viable for personal use
-- **MEDIA: syntax does not send files:** Using `MEDIA:/path/to/file` in `send_message` only sends the file path as a text string, NOT the actual file. WeChat does not support file attachments through this integration. To share file content, paste it directly in the message text.
+- **MEDIA: syntax for sending files (verified 2026-06):** File sending via WeChat works through two methods:
+  1. **System-level (preferred for images):** Include `MEDIA:/absolute/path/to/file` in your regular response text. The Hermes system delivers it natively as an image/file attachment. Example: "Here's the image:\n\nMEDIA:/tmp/pixel_art.png"
+  2. **Explicit send_message:** Call `send_message(action='send', target='weixin', message='Description\n\nMEDIA:/path')` — requires `target` parameter to be set to `'weixin'`. Without `target`, the tool raises "Both 'target' and 'message' are required".
+  
+  Both methods returned `success: true` in testing. The old limitation of "MEDIA: only sends text path" appears to have been resolved by platform updates. For general use, method (1) is simplest; use method (2) when you need to send multiple files as separate messages or need explicit delivery confirmation.
 
 **For multi-agent group chat, use Telegram or Discord instead:**
 - Official Bot API, free, no ban risk

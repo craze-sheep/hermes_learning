@@ -53,3 +53,39 @@ When conducting online literature research, various failure modes can block acce
 ## Key Insight
 
 **Direct arxiv abs pages bypass robots.txt restrictions.** The robots.txt blocks `/search`, `/find`, `/form` but explicitly allows `/abs`, `/pdf`, `/html`. This is the single most reliable fallback for paper verification.
+
+## Anti-Pattern: Guessing ArXiv IDs
+
+**NEVER guess arXiv IDs from partial memory.** This is the #1 time-waster in literature surveys.
+
+Tested in session 2026-06-02 (B2B-20260602-071913, 30+ paper survey):
+- Guessed ~15 arXiv IDs from training knowledge → only 3 were correct (20% hit rate)
+- Wrong guesses hit completely unrelated papers (astrophysics, math, NLP — not the intended CS/CV papers)
+- Each wrong guess wastes: 1 fetch call + time reading/analyzing the wrong paper + mental confusion
+- After ~12 rapid fetch calls, MCP fetch server entered 429 rate limit → 60s cooldown
+
+**Correct strategy for unknown paper IDs:**
+1. Go to `https://arxiv.org/search/?query=%22Exact+Paper+Title%22&searchtype=all`
+2. The exact-title search (with quotes) returns 1-2 results, almost always the right one
+3. Extract the correct arXiv ID from the search result
+4. This is slower per paper (~5s vs ~1s) but has ~100% accuracy vs ~20% for guessing
+
+**For bulk surveys (30+ papers):**
+- Compile the full list from training knowledge FIRST (grouped by direction)
+- Verify only the 5-10 most critical papers via title search
+- Mark verified papers as ✅ and knowledge-based papers as [待验证]
+- Do NOT try to verify all 30+ individually — MCP fetch will rate-limit after ~12 calls
+
+## MCP Fetch Rate Limiting
+
+**Pattern:** After 10-12 rapid consecutive `mcp_fetch_fetch` calls, the server returns HTTP 429 and enters ~60s cooldown.
+
+**Prevention:**
+- Batch calls: make 3-4 fetches, then do browser work, then 3-4 more
+- Use browser navigation for individual arxiv abs pages (NOT rate-limited by MCP)
+- Alternate between fetch (for APIs) and browser (for arxiv pages)
+
+**Recovery:**
+- Error message says "Auto-retry available in ~Ns" — wait that long
+- Switch entirely to browser-based verification during cooldown
+- Do NOT retry fetch immediately — it resets the cooldown timer

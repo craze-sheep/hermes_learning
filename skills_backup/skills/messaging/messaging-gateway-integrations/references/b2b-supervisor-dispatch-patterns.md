@@ -318,11 +318,68 @@ Telegram has a ~4096 character limit for bot messages. Long dispatch messages wi
 ### 13. Infinite Re-dispatch Loop
 Re-dispatching the same worker 5+ times without ever pivoting. After 3 failed dispatches with zero output on disk, pivot to doing the work directly. See "Pivot to Direct Execution" section above.
 
+### 14. Using send_message for B2B Dispatch (CRITICAL)
+The B2B Supervisor dispatch goes through the **tmux pane**, not through `send_message()`. The B2B service captures tmux output and posts to Telegram.
+
+**Wrong:** Calling `send_message(action='list')` → finding no Telegram target → trying `send_message(target='telegram')` → "Platform 'telegram' is not configured" → wasting rounds diagnosing.
+
+**Right:** Just output the B2B response format directly in your text response. The service handles routing.
+
+**Trigger:** Any time you're acting as Supervisor in a B2B task dispatched via job JSON. The job JSON path (`artifacts/tmux-jobs/*.job.json`) is the signal that you're in tmux-capture mode.
+
+### 15. Pretending to Dispatch When Workers Can't Respond
+In CLI/tmux mode, if the B2B service isn't running or workers aren't online, dispatches go into the void. After 1-2 failed attempts, pivot to direct execution. Don't keep outputting ASSIGN messages that nobody will pick up — the user sees empty @mentions and gets frustrated.
+
+**Detection:** If your previous dispatch produced no worker report in the conversation, the worker likely didn't receive it.
+
+**Response:** Load the relevant skill yourself and execute the work directly. Announce the pivot: "Worker 未响应，Supervisor 直接执行。"
+
+**Nuance — Workers may respond across invocations:** In tmux-capture mode, workers don't respond within the same Supervisor invocation. The B2B service captures your output, posts to Telegram, workers process, and then creates a NEW Supervisor job. So "no response" means "no response by the next invocation", not "no response within this turn." Check the filesystem for new worker reports at the start of each invocation before deciding to re-dispatch or pivot. A worker that didn't respond in invocation N may have produced output by invocation N+1.
+
+### 16. Trailing Content After End Marker (CRITICAL)
+The end marker `<<<B2B_DONE:{job_id}>>>` must be the **absolute last line** of the response. Nothing after it — no closing remarks, no sign-offs, no explanations, no blank lines with text.
+
+**Wrong:**
+```
+<<<B2B_DONE:supervisor-xxx>>>
+以上是本轮调度。
+```
+**Right:**
+```
+<<<B2B_DONE:supervisor-xxx>>>
+```
+
+The B2B parser stops at the end marker. Anything after it is invisible to the service but confusing to the user who sees raw terminal output.
+
 ## When to DONE
 
 Finish with DONE only when:
 - All requested deliverables are **verified on disk** (not just claimed in summaries)
 - Or a clear limitation has been explained and accepted
+
+### DONE Response Content Structure
+
+When outputting DONE, the MESSAGE should be **concise and actionable**:
+
+```
+[B2B-task-id][Supervisor][DONE] 任务完成。
+
+**已完成的交付物：**
+- `path/to/file1.md` — 说明
+- `path/to/file2.md` — 说明
+
+**核心结论：**
+[1-3 sentences with the key finding]
+
+**建议下一步：**
+[Optional: recommended follow-up action]
+```
+
+**Rules:**
+- List deliverables with verified file paths
+- State the core conclusion in plain language (not a wall of text)
+- Keep HANDOFF_SUMMARY under 300 chars for the next invocation's context
+- Do NOT repeat the entire report content — the user can read the files
 
 Do NOT DONE when:
 - Only some items have been analyzed
@@ -434,6 +491,44 @@ Round 2: @Researcher 催促 R2 → no pickup
 Round 3: @Researcher 最后催促 R2 → no pickup
 Round 4: Supervisor pivots, does R2 directly, DONE
 ```
+
+## CLI/Tmux Mode Dispatch (CRITICAL)
+
+When the Supervisor runs as a Hermes agent in a **tmux session** (the standard B2B deployment), the dispatch mechanism works through **tmux pane capture**, not through `send_message()`.
+
+**The tmux pane output IS the dispatch channel.** The B2B service (`llm.py` → `TmuxHermesClient`) captures the tmux pane content via `tmux capture-pane` and posts it to the Telegram group. You do NOT need `send_message()` or any messaging tool.
+
+**Do NOT:**
+- Call `send_message(action='list')` to find Telegram targets
+- Call `send_message(target='telegram', message=...)` — Telegram is likely not configured in the CLI agent's Hermes instance
+- Spend multiple rounds diagnosing "Telegram not configured" errors
+- Treat "Platform 'telegram' is not configured" as a blocker
+
+**Do:**
+- Simply output the B2B response format (markers + TARGET_ROLE + MESSAGE + HANDOFF_SUMMARY) directly in your response text
+- The B2B service captures your output and routes it to the Telegram group
+- Workers see the @mention and respond in the group
+
+**Flow:**
+```
+B2B Service → creates job JSON → pastes prompt into tmux session
+                                    ↓
+Supervisor agent reads job, outputs B2B response in tmux pane
+                                    ↓
+B2B Service → captures pane → posts MESSAGE to Telegram group
+                                    ↓
+Worker bot sees @mention → processes task → reports back
+                                    ↓
+B2B Service → new job JSON for Supervisor → cycle continues
+```
+
+**Why send_message fails:** The CLI agent's Hermes instance typically only has Weixin/other platforms configured, not Telegram. The Telegram bots are separate processes managed by the B2B service. The agent's role is to produce the right output format — routing is the service's job.
+
+## Pivot to Direct Execution (CLI Mode)
+
+In CLI/tmux mode, if a worker doesn't pick up the dispatched task after 1-2 attempts (worker tmux session not running, B2B service not routing, etc.), the Supervisor should **pivot to doing the work directly** instead of endlessly re-dispatching.
+
+The Supervisor can load worker-relevant skills (e.g., `literature-survey`) and execute the work itself. Use the skill's fallback strategies (e.g., Tier 3 knowledge-only mode for research without web tools). This is preferable to the user seeing repeated unanswered @mentions.
 
 ## Architectural Insight: Stateless Supervisor with Stateful Summary
 

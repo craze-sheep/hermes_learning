@@ -8,6 +8,8 @@ triggers:
   - loss function calibration
   - data pipeline design for custom datasets
   - model checkpoint saving/loading
+  - analyzing training curves or TensorBoard logs
+  - diagnosing overfitting, loss spikes, or convergence issues
 ---
 
 # ML Training Workflows
@@ -334,7 +336,42 @@ else:
     model.load_state_dict(ckpt)  # raw state dict
 ```
 
-## 10. Experiment Isolation: Copy Before Modifying
+## 10. Post-Training Curve Diagnostics
+
+After a training run, analyze TensorBoard event files to detect overfitting, spikes, plateaus, and loss imbalance. The workflow:
+
+1. Extract scalars with `tbparse` (not the heavy TensorBoard server)
+2. Generate train-vs-val comparison plots
+3. Run automated diagnostics: overfitting (val ↑), spikes (>3σ), plateaus (tail flat), NaN/Inf
+4. Per-epoch CV analysis to detect worsening oscillation
+5. Cross-metric comparison to find the bottleneck loss
+
+**Full methodology:** `references/training-curve-diagnostics.md`
+**Ready-to-run script:** `scripts/analyze_tb_curves.py <tb_logdir>`
+
+```bash
+# Quick usage
+python ~/.hermes/skills/mlops/ml-training-workflows/scripts/analyze_tb_curves.py ./runs/my_run
+```
+
+## 10b. Model Architecture Exploration with CodeGraph
+
+For projects with `.codegraph/` initialized, use CodeGraph MCP tools to understand architecture:
+
+```bash
+# Initialize (once per project)
+cd /path/to/model && codegraph init && codegraph index
+```
+
+Then query via MCP tools:
+- `codegraph_context` — "how does the encoder work" (returns entry points + related symbols + code)
+- `codegraph_trace` — trace call path between two symbols (e.g., encoder → loss)
+- `codegraph_explore` — batch-inspect multiple related symbols in one call
+- `codegraph_impact` — "what breaks if I change X"
+
+Best used for learning a new codebase before making changes.
+
+## 11. Experiment Isolation: Copy Before Modifying
 
 **User preference (strong):** Never modify source model code (`ai_model/`, `src/model/`, etc.) when running experiments. Always copy to a working directory first.
 
@@ -357,7 +394,7 @@ python experiments/baseline/model/train.py --mode small
 
 **Why:** Multiple experiments may run in parallel or sequentially. Modifying source creates cross-contamination between experiments and makes it impossible to diff experiment vs baseline.
 
-## 11. Pitfall: `__file__` Path Breakage When Copying Code
+## 12. Pitfall: `__file__` Path Breakage When Copying Code
 
 **Problem:** Training scripts commonly compute paths relative to `__file__`:
 ```python
@@ -396,7 +433,7 @@ assert os.path.exists(os.path.join(_project_root, 'database')), f"Wrong root: {_
 
 > See also: `references/multi-experiment-baseline-workflow.md` for the full pattern of running baseline + N experiments with copy-based isolation.
 
-## 12. Data Pipeline for Custom Datasets
+## 13. Data Pipeline for Custom Datasets
 
 ### Scanning with pickle cache
 

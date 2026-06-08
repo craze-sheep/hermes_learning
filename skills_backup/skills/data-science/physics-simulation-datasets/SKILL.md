@@ -54,6 +54,40 @@ Validate in phases:
 
 ## Known Pitfalls to Preserve
 
+- **TYPE_MAP must match actual `object_type` values in `object_static.json`.** Always verify with:
+  ```bash
+  find database/ -name "object_static.json" | head -20 | xargs grep -h "object_type" | sort | uniq -c
+  ```
+  The slot-datamaking dataset has 7 types (ground, sphere, cube, cylinder, wall, ramp, obstacle) but the model code defined only 4 with wrong names (`box` instead of `cube`). This silently zeroed out one-hot encodings for most objects. When adding new object types, also update `attr_dim`, `NUM_TYPES`, and any downstream consumers of the type one-hot.
+
+  **Fastest way to audit types: read the generation scripts, not the database.** Scanning `database/` with grep is slow (thousands of JSON files). Instead:
+  ```bash
+  for s in S1 S2 S3 S4 S5 S6 S7 S8; do
+    script="task/task6-脚本编写/generate_${s,,}_dataset.py"
+    echo "$s: $(grep -oP '(sphere|cube|cylinder|wall|ramp|obstacle)_spec\(' "$script" | sort | uniq -c | sort -rn | tr '\n' ' ')"
+    echo "   LEVEL_TARGETS: $(grep 'LEVEL_TARGETS' "$script")"
+  done
+  ```
+  Each `_spec(` call = 1 dynamic object per sample config. Wall/ramp/obstacle are static scene elements (always present in that level). Multiply by LEVEL_TARGETS to get total object instances.
+
+  **Recommended 3-type unification (2026-06-01 decision):** Since ground, wall, ramp, obstacle are ALL `kb.Cube` in PyBullet (just different sizes and static=true), unify them:
+  ```python
+  TYPE_MAP = {'sphere': 0, 'cube': 1, 'cylinder': 2}
+  NUM_TYPES = 3
+  TYPE_ALIAS = {'ground': 'cube', 'box': 'cube', 'wall': 'cube', 'ramp': 'cube', 'obstacle': 'cube'}
+  ```
+  This reduces attr_dim from 14→13. The model distinguishes "stage elements" from "moving objects" via the `static` flag (attr index 8), not the type one-hot.
+
+- **PyBullet object creation is non-obvious.** In `build_asset()` (generate scripts), the mapping is:
+  ```python
+  if spec.object_type in {"cube", "ground", "wall"}:
+      return kb.Cube(scale=tuple(v/2 for v in spec.size), **kwargs)
+  if spec.object_type == "sphere":
+      return kb.Sphere(scale=spec.radius, **kwargs)
+  if spec.object_type == "cylinder":
+      return kb.Cylinder(scale=(r, r, h/2), **kwargs)
+  ```
+  So ground, wall, and obstacle are ALL `kb.Cube` (box shapes) — relabeling wall/obstacle as cube is physically correct since they're all rectangular rigid bodies differing only in size and static flag.
 - Blender/Kubric background depth sentinel: `~1e10` is not automatically corruption.
 - Reusing one renderer across views can corrupt depth; create/unlink a renderer per view when this appears.
 - Kubric object constructors are non-obvious: `kb.Sphere(scale=radius)`, `kb.Cube(scale=half_extents)`; unsupported kwargs raise trait errors.

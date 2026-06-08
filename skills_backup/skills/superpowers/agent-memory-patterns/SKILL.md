@@ -7,6 +7,33 @@ description: When and how to proactively use holographic memory (fact_store) vs 
 
 The system prompt says "use fact_store to add facts" but doesn't specify WHEN. This leads to "silent sessions" where the agent never proactively stores anything, even when the user expects it to remember key information.
 
+triggers:
+  - 用户问"为啥不用holographic记忆"或类似问题
+  - 用户提醒你应该存储信息而你没有主动存储
+  - 会话产生了重要发现但你还没有存储到fact_store
+
+`AGENTS.md` is loaded every turn as project context. It already contains comprehensive memory rules (lines 78-107) with 7 trigger categories:
+1. 用户明确指示（"记住"、"记一下"）
+2. 用户纠正信息
+3. 学到用户偏好
+4. 学到环境信息
+5. 学到项目信息
+6. 完成重要配置
+7. **会话结束前** — 总结本次会话的重要发现
+
+**DO NOT** reinvent these rules or store them in memory. Just follow AGENTS.md.
+
+## Where NOT To Put Behavioral Instructions
+
+| Place | Purpose | Behavior rules? |
+|-------|---------|----------------|
+| `AGENTS.md` | Always-loaded project context | ✅ YES — this is where behavioral rules go |
+| `CLAUDE.md` | Coding guidelines only | ❌ NO — not for memory/behavior rules |
+| Holographic memory (`fact_store`) | Passive facts queried on demand | ❌ NO — you won't proactively read it to remind yourself |
+| Skills (`skill_manage`) | Reusable procedures and workflows | ✅ YES — for procedural knowledge |
+
+**Pitfall:** Storing "remember to update memory" as a fact in holographic memory is useless — you won't query memory to remind yourself to update memory. Put it in AGENTS.md or a skill that's loaded every session.
+
 ## Memory Tool Triage
 
 | Tool | Purpose | When to Use |
@@ -40,7 +67,16 @@ The system prompt says "use fact_store to add facts" but doesn't specify WHEN. T
 
 **Cause:** Agent treats holographic memory as optional, not as a core responsibility.
 
-**Fix:** After every substantive session, ask: "Is there anything here that would help a future session?" If yes, store it.
+**Fix — Concrete Checklist:**
+After every substantive session (3+ tool calls), run through AGENTS.md triggers:
+1. Did the user correct me? → `fact_store` add (correction)
+2. Did the user express a preference? → `fact_store` add (user_pref)
+3. Did I learn something about their project? → `fact_store` add (project)
+4. Did I discover environment info? → `fact_store` add (general)
+5. Did I solve a non-trivial problem? → `fact_store` add (tool) or `skill_manage` add (if reusable)
+6. Did I complete a complex task? → Store the outcome, not the process
+
+**If any answer is YES → store it NOW, don't defer.** The user should never have to remind you to update memory.
 
 ## Entity Tagging Best Practices
 

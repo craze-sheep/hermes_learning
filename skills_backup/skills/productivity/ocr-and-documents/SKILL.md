@@ -32,27 +32,84 @@ Only use local extraction when: the file is local, web_extract fails, or you nee
 
 ## Step 2: Choose Local Extractor
 
-| Feature | pymupdf (~25MB) | marker-pdf (~3-5GB) |
-|---------|-----------------|---------------------|
-| **Text-based PDF** | ✅ | ✅ |
-| **Scanned PDF (OCR)** | ❌ | ✅ (90+ languages) |
-| **Tables** | ✅ (basic) | ✅ (high accuracy) |
-| **Equations / LaTeX** | ❌ | ✅ |
-| **Code blocks** | ❌ | ✅ |
-| **Forms** | ❌ | ✅ |
-| **Headers/footers removal** | ❌ | ✅ |
-| **Reading order detection** | ❌ | ✅ |
-| **Images extraction** | ✅ (embedded) | ✅ (with context) |
-| **Images → text (OCR)** | ❌ | ✅ |
-| **EPUB** | ✅ | ✅ |
-| **Markdown output** | ✅ (via pymupdf4llm) | ✅ (native, higher quality) |
-| **Install size** | ~25MB | ~3-5GB (PyTorch + models) |
-| **Speed** | Instant | ~1-14s/page (CPU), ~0.2s/page (GPU) |
+| Feature | pymupdf (~25MB) | markitdown (~50MB) | marker-pdf (~3-5GB) | docling (~1GB+) |
+|---------|-----------------|--------------------|--------------------|-----------------|
+| **Text-based PDF** | ✅ | ✅ | ✅ | ✅ |
+| **Scanned PDF (OCR)** | ❌ | ❌ | ✅ (90+ languages) | ✅ |
+| **Tables** | ✅ (basic) | ⭐⭐ OK | ✅ (high accuracy) | ✅ (best) |
+| **Equations / LaTeX** | ❌ | ❌ | ⭐⭐ medium | ✅ (native LaTeX) |
+| **Multi-column layout** | ⭐ messy | ⭐ messy | ✅ (good) | ✅ (best) |
+| **Chinese PDF** | ⭐⭐ | ⭐⭐ | ✅ (good) | ⭐⭐ OK |
+| **Images extraction** | ✅ (embedded) | ❌ | ✅ (with context) | ✅ |
+| **Images → text (OCR)** | ❌ | ❌ | ✅ | ✅ |
+| **JSON output** | ❌ | ❌ | ✅ | ✅ (native structured) |
+| **Markdown output** | ✅ (via pymupdf4llm) | ✅ (native) | ✅ (native) | ✅ |
+| **Install size** | ~25MB | ~50MB | ~3-5GB (PyTorch+models) | ~1GB+ |
+| **GPU acceleration** | N/A | N/A | Optional (CUDA) | Optional (CUDA) |
+| **Speed** | Instant | Fast | ~1-14s/page (CPU), ~0.2s/page (GPU) | Medium |
+| **License** | AGPL | MIT | GPL-3.0 | MIT |
 
-**Decision**: Use pymupdf unless you need OCR, equations, forms, or complex layout analysis.
+### Tool selection guide
 
-If the user needs marker capabilities but the system lacks ~5GB free disk:
-> "This document needs OCR/advanced extraction (marker-pdf), which requires ~5GB for PyTorch and models. Your system has [X]GB free. Options: free up space, provide a URL so I can use web_extract, or I can try pymupdf which works for text-based PDFs but not scanned documents or equations."
+| Need | Use |
+|------|-----|
+| Quick text extraction, no frills | **pymupdf** |
+| Fast Markdown, lightweight, API-friendly | **markitdown** |
+| Scanned PDF, OCR, complex layout, images | **marker-pdf** |
+| Academic papers, heavy tables, LaTeX formulas | **docling** |
+| PDF→JSON with structure preservation | **marker** or **docling** |
+**Decision**: Use pymupdf unless you need OCR, equations, forms, or complex layout analysis. For quick Markdown conversion, try markitdown first (lighter than marker). For academic/technical docs with heavy tables and formulas, docling is the best choice.
+
+If the user needs marker/docling capabilities but the system lacks disk:
+> "This document needs [marker-pdf/docling], which requires ~[X]GB. Your system has [Y]GB free. Options: free up space, provide a URL so I can use web_extract, or I can try pymupdf/markitdown which works for text-based PDFs but not scanned documents or equations."
+
+---
+
+## markitdown (lightweight Markdown)
+
+```bash
+pip install markitdown
+```
+
+```bash
+# CLI
+markitdown document.pdf
+
+# Python
+from markitdown import MarkItDown
+md = MarkItDown()
+result = md.convert("document.pdf")
+print(result.text_content)
+```
+
+**Best for**: Quick text extraction to Markdown, API pipelines, lightweight environments.
+**Limitations**: No OCR, weak on complex tables/multi-column, no image extraction, no JSON output.
+
+---
+
+## docling (academic/scientific)
+
+```bash
+pip install docling
+```
+
+```bash
+# CLI
+docling document.pdf --to json
+docling document.pdf --to md
+
+# Python
+from docling.document_converter import DocumentConverter
+converter = DocumentConverter()
+result = converter.convert("document.pdf")
+print(result.document.export_to_json())  # structured JSON
+print(result.document.export_to_markdown())  # Markdown
+```
+
+**Best for**: Academic papers, technical reports, documents with heavy tables and LaTeX formulas.
+**Limitations**: Heavier install (~1GB+), slower on CPU, Chinese support is OK but not great.
+**GPU**: Supports NVIDIA CUDA for acceleration. Requires PyTorch CUDA version ≤ driver CUDA version (see WSL skill `references/wsl2-gpu-support.md` for version mismatch diagnosis).
+**License**: MIT — safe for commercial use.
 
 ---
 
@@ -172,5 +229,6 @@ For extracting structured content (word banks, answer keys, question lists) from
 - marker-pdf is for OCR, scanned docs, equations, complex layouts — install only when needed
 - Both helper scripts accept `--help` for full usage
 - marker-pdf downloads ~2.5GB of models to `~/.cache/huggingface/` on first use
+- **docling VRAM**: models ~500MB, inference ~1-2GB. 8GB GPU is more than sufficient for single-document processing.
 - For Word docs: `pip install python-docx` (better than OCR — parses actual structure)
 - For PowerPoint: see the `powerpoint` skill (uses python-pptx)

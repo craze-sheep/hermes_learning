@@ -68,3 +68,55 @@ for year_dir in sorted(os.listdir(base_dir)):
         words = extract_section_a_words(os.path.join(pdf_dir, pdfs[0]))
         print(f"{year_dir}: {', '.join(words)}")
 ```
+
+## Real-World Directory Structure Patterns (CET-6)
+
+Chinese exam PDF collections from Baidu Pan / educational sites follow inconsistent naming. Key patterns from actual CET-6 collections:
+
+### Typical Layout
+
+```
+根目录/
+├── 1990年-2018年真题资料【合集】/
+│   ├── 2015年06月CET6题+解+音频/
+│   │   ├── 01、真题PDF版（推荐使用）/
+│   │   ├── 02、真题Word版/
+│   │   ├── 03、答案解析/
+│   │   └── 04、听力音频/
+│   └── ...
+├── 2019年06月CET6题+解+音频/
+│   ├── 01、真题PDF版（推荐使用）/
+│   ├── 02、答案解析/
+│   └── ...
+└── 2024年12月CET6题+解+音频【新】/
+    ├── 01、真题PDF版（推荐使用）/
+    ├── 02、答案解析/
+    └── 03、听力音频/
+```
+
+### Subdirectory Naming Variations
+
+The "真题PDF" folder name is NOT consistent across years:
+
+| Variant | Example Year |
+|---------|-------------|
+| `01、真题PDF版（推荐使用）` | Most years |
+| `01、真题PDF版（推荐打印）` | 2016年06月 |
+| `01、真题PDF版（推荐打印版）` | Some older years |
+
+**Always match with glob/startswith**, not exact string:
+```python
+for subdir in os.listdir(year_path):
+    if subdir.startswith("01") and "真题" in subdir and "PDF" in subdir:
+        pdf_dir = os.path.join(year_path, subdir)
+```
+
+### Other Pitfalls
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Empty 0-byte PDFs after copy | WSL memory pressure during large batch copies from /mnt/d/ | Verify file sizes after copy: `find . -name "*.pdf" -size 0` |
+| Some years have no subdirectories | 2020年07月 (COVID special session) has files directly in year folder, no `01、真题PDF版` wrapper | Check both `year/01*/*.pdf` and `year/*.pdf` |
+| Answer PDFs mixed with exam PDFs | Answer files (解析) in `02、答案解析/` have similar names | Filter: exam PDFs contain "真题", answer PDFs contain "解析" or "答案" |
+| 2020年07月 only 1 exam set | COVID延期, only 1 set administered | Don't expect 3 sets for every year |
+| Word版 (.docx) alongside PDF | Some years have `02、真题Word版/` | Filter by `.pdf` extension when you only want PDFs |

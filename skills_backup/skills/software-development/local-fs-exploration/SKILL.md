@@ -138,6 +138,10 @@ When asked to "list all projects" in a directory:
    - Tech stack (if determinable)
    - Last modified date (from directory listing)
 
+## Batch File Operations
+
+When the task involves copying/moving files from a directory tree with inconsistent subfolder naming (common with Chinese exam archives, downloaded datasets, multi-year collections), see `references/batch-file-operations.md` for the discovery-then-multi-pattern-copy workflow, including WSL path translation and special-case handling.
+
 ## Example: Full Project Inventory
 
 ```python

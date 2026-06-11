@@ -211,6 +211,82 @@ word1, word2, word3, ..., word15
 （与第2套相同）
 ```
 
+## Answer Explanation PDFs (答案解析) — Listening Synonym Replacement Analysis
+
+When analyzing answer explanation PDFs (答案解析) for listening comprehension synonym replacements:
+
+### CET-6 Listening Structure
+The listening section has THREE parts (not two — forgetting Section C is a common mistake):
+- **Section A** — Long conversations (长对话), Q1–Q8
+- **Section B** — Passages (短文), Q9–Q15
+- **Section C** — Lectures/Talks (讲座/讲话), Q16–Q25, labeled as Recording One / Recording Two / Recording Three
+
+Only analyze synonym replacements in these three sections. Ignore reading, writing, and translation.
+
+### Pre-requisite: PDF to txt Conversion
+Before analysis, convert all PDFs to txt using **docling** (Python API, NOT CLI — CLI has no `--gpu` flag):
+```python
+import os, warnings, logging
+warnings.filterwarnings("ignore")
+logging.disable(logging.CRITICAL)
+from docling.document_converter import DocumentConverter
+
+converter = DocumentConverter()
+pdf_dir = "/path/to/答案解析"
+txt_dir = "/path/to/txt_解析"
+os.makedirs(txt_dir, exist_ok=True)
+for pdf in sorted(os.listdir(pdf_dir)):
+    if not pdf.endswith('.pdf'): continue
+    txt = pdf.replace('.pdf', '.txt')
+    if os.path.exists(os.path.join(txt_dir, txt)):
+        print(f"Skip (exists): {pdf}", flush=True)
+        continue
+    result = converter.convert(os.path.join(pdf_dir, pdf))
+    with open(os.path.join(txt_dir, txt), 'w') as f:
+        f.write(result.document.export_to_markdown())
+    print(f"Done: {pdf}", flush=True)
+```
+- GPU is automatic via PyTorch — NO `--gpu` flag exists. Just ensure `torch.cuda.is_available()` is True.
+- Process **serially** (one file at a time) to avoid GPU OOM
+- Skip files that already have a corresponding txt in the output directory
+- Source dirs: `答案解析/` → `txt_解析/`, `原题/` → `txt_原题/`
+- Run conversion in background (`terminal background=true notify_on_complete=true`) while starting analysis on already-converted files
+
+### CRITICAL: Read files individually, do NOT grep
+**Do NOT write a script to regex-search for "同义" keywords.** The user explicitly requires:
+1. Use `read_file` to read each txt file one at a time
+2. Use AI semantic understanding to identify synonym replacement cases in context
+3. This catches nuanced phrasing ("选项是对原文的改写", "paraphrase", "换一种说法") that regex misses
+4. It also prevents false positives (e.g., reading comprehension "同义词辨析" is NOT a listening synonym case)
+
+### Synonym Markers to Look For (while reading, not grepping)
+- `同义转述` / `同义替换` — synonym paraphrase/replacement
+- `原词复现` — original word recurrence (exact match in option)
+- `同义改写` — synonym rewrite
+- `对应` — corresponds to (older format, 2015-2018)
+- `选项是对原文的改写/换一种说法` — option rephrases the original
+
+### Pattern
+Answer explanations reference numbered audio sentences like `句(1-1)` or `句(5)`, then explain: `选项中的X是录音中Y的同义转述`. The original English sentence is in the audio transcript section above.
+
+### Key Limitation
+Answer explanation PDFs do NOT contain full 4 options (A/B/C/D). They only mention the correct answer. To get complete options, you need the original test paper PDFs (真题PDF版).
+
+### Workflow
+1. Convert PDFs to txt with docling (Python API, GPU automatic, serial, skip existing) — run in background
+2. While conversion runs, start processing already-converted txt files
+3. Use `read_file` to read each txt file — do NOT grep
+4. Identify listening sections: Section A (Q1–Q8), Section B (Q9–Q15), Section C (Q16–Q25)
+5. For each question's answer explanation, use semantic understanding to detect synonym replacement
+6. Extract: exam date + suite number, question number, section, English key sentence, correct answer
+7. Match back to original test paper txt to get full A/B/C/D options
+8. **Write each finding to the output file immediately** — do NOT accumulate in memory. Use `patch` to append after each file's analysis. The user will ask "why aren't you writing?" if you delay.
+
+### Prompt-writing note
+When the user asks you to **write a prompt** for this task (not execute it), the prompt should cover all steps above explicitly — do not assume the executor knows the listening structure, the file naming conventions, or the read-not-grep requirement.
+
 ## Support files
 - `scripts/extract_cet_words.py` — ready-to-run extraction script (single PDF or batch mode)
 - `references/scrapling-notes.md` — notes on using Scrapling for web fallback when PDFs are missing
+- `references/synonym-replacement-prompt-template.md` — prompt template for the listening synonym replacement extraction task (use when user asks to write a prompt, not execute)
+- `references/docling-pitfalls.md` — garbled output from certain year PDFs, file naming mapping between 解析/原题 directories, missing original files

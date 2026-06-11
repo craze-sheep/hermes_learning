@@ -69,6 +69,29 @@ which nvcc
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no cuda')"
 ```
 
+### 7. CUDA Version Mismatch Diagnosis
+
+A common failure: PyTorch says `CUDA available: False` even though nvidia-smi shows the GPU. Usually a version mismatch.
+
+```bash
+# Check driver-supported CUDA version (from nvidia-smi output)
+/usr/lib/wsl/lib/nvidia-smi | grep "CUDA Version"
+
+# Check PyTorch compiled CUDA version
+python3 -c "import torch; print('PyTorch:', torch.__version__); print('CUDA compiled:', torch.version.cuda)"
+```
+
+If PyTorch's CUDA version **exceeds** the driver's CUDA version, GPU will be unavailable. Typical error:
+```
+CUDA initialization: The NVIDIA driver on your system is too old (found version XXXXX).
+```
+
+**Fix options:**
+- **Upgrade driver** (recommended): Download latest from nvidia.com — WSL picks it up automatically after `wsl --shutdown`.
+- **Downgrade PyTorch** to match driver CUDA: `pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126` (replace `cu126` with your driver's CUDA major.minor, e.g. cu124, cu126, cu128).
+
+**Example**: Driver CUDA 12.6 + PyTorch cu130 → fails. Downgrade to `cu126` or upgrade driver to support CUDA 13.0.
+
 ## Common Pitfalls
 
 1. **`nvidia-smi` not in PATH** — Use `/usr/lib/wsl/lib/nvidia-smi` instead
@@ -78,6 +101,7 @@ python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get
 5. **`lspci` shows no GPU** — Normal in WSL2. PCI devices don't expose directly
 6. **Installing Linux NVIDIA driver** — NEVER do this. Breaks WSL2 GPU support
 7. **Codex/Claude Code can't fix GPU issues** — Both run in sandboxes without system-level access. Only the user can run `wsl --update` and install packages via `sudo`.
+8. **PyTorch `CUDA available: False` despite GPU visible** — CUDA version mismatch. Check `torch.version.cuda` vs `/usr/lib/wsl/lib/nvidia-smi | grep "CUDA Version"`. If PyTorch CUDA > driver CUDA, downgrade PyTorch (`pip install torch --index-url https://download.pytorch.org/whl/cu126`) or upgrade Windows driver.
 
 ## Docker GPU Access
 

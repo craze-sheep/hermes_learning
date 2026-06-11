@@ -47,9 +47,11 @@ Umbrella skill for WSL2 + Windows host operations: environment audits, GPU/CUDA/
 ```bash
 # WSL/GPU basics
 uname -r
-cat /etc/wsl.conf
+# GPU
 /usr/lib/wsl/lib/nvidia-smi
 ls -l /dev/dxg /usr/lib/wsl/lib/libcuda.so.1
+python3 -c "import torch; print('CUDA:', torch.cuda.is_available(), '| compiled for:', torch.version.cuda)"
+/usr/lib/wsl/lib/nvidia-smi | grep "CUDA Version"  # compare with torch.version.cuda
 
 # Docker
 systemctl is-active docker.service

@@ -13,6 +13,9 @@ agent:
   api_max_retries: 3
   service_tier: ''
   tool_use_enforcement: auto
+  task_completion_guidance: true
+  environment_probe: true
+  environment_hint: ''
   gateway_timeout_warning: 900
   clarify_timeout: 600
   gateway_notify_interval: 180
@@ -75,7 +78,6 @@ terminal:
   singularity_image: docker://nikolaik/python-nodejs:python3.11-nodejs20
   modal_image: nikolaik/python-nodejs:python3.11-nodejs20
   daytona_image: nikolaik/python-nodejs:python3.11-nodejs20
-  vercel_runtime: node24
   container_cpu: 1
   container_memory: 5120
   container_disk: 51200
@@ -85,6 +87,7 @@ terminal:
   docker_extra_args: []
   docker_run_as_host_user: false
   persistent_shell: true
+  vercel_runtime: node24
   lifetime_seconds: 300
 web:
   backend: ''
@@ -105,6 +108,8 @@ browser:
     user_id: ''
     session_key: ''
     adopt_existing_tab: false
+    rewrite_loopback_urls: false
+    loopback_host_alias: host.docker.internal
 checkpoints:
   enabled: false
   max_snapshots: 20
@@ -238,8 +243,14 @@ display:
   compact: false
   personality: kawaii
   resume_display: full
+  resume_exchanges: 10
+  resume_max_user_chars: 300
+  resume_max_assistant_chars: 200
+  resume_max_assistant_lines: 3
+  resume_skip_tool_only: true
   busy_input_mode: interrupt
   tui_auto_resume_recent: false
+  tui_agents_nudge: true
   bell_on_complete: false
   show_reasoning: false
   streaming: true
@@ -249,6 +260,7 @@ display:
   persistent_output_max_lines: 200
   inline_diffs: true
   file_mutation_verifier: true
+  turn_completion_explainer: true
   show_cost: false
   skin: default
   language: en
@@ -275,6 +287,10 @@ display:
 dashboard:
   theme: default
   show_token_analytics: false
+  oauth:
+    client_id: ''
+    portal_url: ''
+  public_url: ''
 privacy:
   redact_pii: false
 tts:
@@ -312,6 +328,11 @@ stt:
     model: whisper-1
   mistral:
     model: voxtral-mini-latest
+  elevenlabs:
+    model_id: scribe_v2
+    language_code: ''
+    tag_audio_events: false
+    diarize: false
 voice:
   record_key: ctrl+b
   max_recording_seconds: 120
@@ -368,6 +389,7 @@ curator:
   min_idle_hours: 2
   stale_after_days: 30
   archive_after_days: 90
+  prune_builtins: true
   backup:
     enabled: true
     keep: 5
@@ -448,6 +470,7 @@ kanban:
   worker_log_backup_count: 1
   orchestrator_profile: ''
   default_assignee: ''
+  max_in_progress_per_profile: null
   auto_decompose: true
   auto_decompose_per_tick: 3
   dispatch_stale_timeout_seconds: 14400
@@ -455,6 +478,12 @@ code_execution:
   mode: project
   timeout: 300
   max_tool_calls: 50
+tools:
+  tool_search:
+    enabled: auto
+    threshold_pct: 10
+    search_default_limit: 5
+    max_search_limit: 20
 logging:
   level: INFO
   max_size_mb: 5
@@ -465,10 +494,15 @@ logging:
 model_catalog:
   enabled: true
   url: https://hermes-agent.nousresearch.com/docs/api/model-catalog.json
-  ttl_hours: 24
+  ttl_hours: 1
   providers: {}
 network:
   force_ipv4: false
+gateway:
+  strict: false
+  media_delivery_allow_dirs: []
+  trust_recent_files: true
+  trust_recent_files_seconds: 600
 sessions:
   auto_prune: false
   retention_days: 90
@@ -501,7 +535,11 @@ secrets:
     cache_ttl_seconds: 300
     override_existing: true
     auto_install: true
-_config_version: 23
+    server_url: ''
+paste_collapse_threshold: 5
+paste_collapse_threshold_fallback: 5
+paste_collapse_char_threshold: 2000
+_config_version: 25
 session_reset:
   mode: both
   idle_minutes: 1440
@@ -569,7 +607,7 @@ custom_providers:
 mcp_servers:
   holographic:
     enabled: true
-    command: node
+    command: /home/lzy/miniconda3/bin/node
     args:
     - /home/lzy/.hermes/mcp-holographic/index.js
   sequential-thinking:

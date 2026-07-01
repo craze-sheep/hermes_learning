@@ -394,7 +394,54 @@ python experiments/baseline/model/train.py --mode small
 
 **Why:** Multiple experiments may run in parallel or sequentially. Modifying source creates cross-contamination between experiments and makes it impossible to diff experiment vs baseline.
 
-## 12. Pitfall: `__file__` Path Breakage When Copying Code
+## 14. Experiment Tracking with Weights & Biases
+
+Log experiments, compare runs, optimize hyperparameters, and manage model versions.
+
+### Quick Start
+```python
+import wandb
+run = wandb.init(project="my-project", config={"lr": 0.001, "epochs": 10, "batch_size": 32})
+
+for epoch in range(run.config.epochs):
+    train_loss = train_epoch()
+    wandb.log({"train/loss": train_loss, "val/loss": val_loss, "epoch": epoch})
+
+wandb.finish()
+```
+
+### Hyperparameter Sweeps
+```python
+sweep_config = {
+    'method': 'bayes',  # or 'grid', 'random'
+    'metric': {'name': 'val/loss', 'goal': 'minimize'},
+    'parameters': {
+        'lr': {'distribution': 'log_uniform', 'min': 1e-5, 'max': 1e-1},
+        'batch_size': {'values': [16, 32, 64]},
+    }
+}
+sweep_id = wandb.sweep(sweep_config, project="my-project")
+wandb.agent(sweep_id, function=train, count=50)
+```
+
+### Model Checkpointing
+```python
+artifact = wandb.Artifact('model', type='model')
+artifact.add_file('checkpoint.pth')
+wandb.log_artifact(artifact, aliases=['best', 'production'])
+```
+
+### Integration with PyTorch
+```python
+# Log media, histograms, tables
+wandb.log({"examples": [wandb.Image(img) for img in images]})
+wandb.log({"gradients": wandb.Histogram(gradients)})
+wandb.log({"predictions": wandb.Table(columns=["id", "pred", "true"], data=rows)})
+```
+
+**Detailed references:** See `references/wandb-sweeps.md`, `references/wandb-artifacts.md`, `references/wandb-integrations.md` for comprehensive guides on sweeps, model registry, and framework-specific integration.
+
+## 15. Pitfall: `__file__` Path Breakage When Copying Code
 
 **Problem:** Training scripts commonly compute paths relative to `__file__`:
 ```python

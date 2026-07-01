@@ -142,6 +142,62 @@ Write to `<project>/优化建议.md` (or user-specified path) with:
 
 - **physics-simulation-datasets** (data-science/) — For generating, validating, and managing physics simulation video datasets. Use when the data pipeline needs work before model evaluation.
 
+## LLM Benchmarking with lm-evaluation-harness
+
+Evaluate LLMs across 60+ academic benchmarks (MMLU, GSM8K, HumanEval, TruthfulQA, HellaSwag). Industry standard used by EleutherAI, HuggingFace, and major labs.
+
+### Quick Start
+```bash
+pip install lm-eval
+
+# Standard benchmark evaluation
+lm_eval --model hf \
+  --model_args pretrained=meta-llama/Llama-2-7b-hf \
+  --tasks mmlu,gsm8k,hellaswag \
+  --device cuda:0 --batch_size 8
+
+# vLLM backend (5-10x faster)
+lm_eval --model vllm \
+  --model_args pretrained=meta-llama/Llama-2-7b-hf,tensor_parallel_size=2 \
+  --tasks mmlu --batch_size auto
+```
+
+### Core Benchmarks
+| Benchmark | What it measures | Time (7B, A100) |
+|-----------|-----------------|-----------------|
+| MMLU | 57 subjects, multiple choice | ~2 hours |
+| GSM8K | Grade school math | ~5 minutes |
+| HellaSwag | Common sense reasoning | ~10 minutes |
+| HumanEval | Python code generation | ~20 minutes |
+| TruthfulQA | Truthfulness | ~15 minutes |
+| ARC | Science questions | ~10 minutes |
+
+### Track Training Progress
+```bash
+# Evaluate checkpoint
+lm_eval --model hf \
+  --model_args pretrained=checkpoints/step-1000 \
+  --tasks gsm8k,hellaswag --num_fewshot 0 \
+  --output_path results/step-1000.json
+```
+
+### Compare Models
+```bash
+# Evaluate multiple models
+for model in llama-2-7b llama-2-13b mistral-7b; do
+  lm_eval --model hf --model_args pretrained=$model \
+    --tasks mmlu,gsm8k --num_fewshot 5 \
+    --output_path results/$model.json
+done
+```
+
+### Common Issues
+- **OOM:** Reduce `--batch_size 1` or use quantization (`load_in_8bit=True`)
+- **Slow:** Use vLLM backend or reduce `--num_fewshot 0`
+- **Different results:** Check fewshot count (most papers use 5-shot)
+
+**Detailed references:** See `references/lm-eval-benchmarks.md`, `references/lm-eval-custom-tasks.md`, `references/lm-eval-api-evaluation.md`, `references/lm-eval-distributed.md`.
+
 ## Support Files
 
 - `references/literature-survey-template.md` — 8-section template for paper notes with code-level suggestions

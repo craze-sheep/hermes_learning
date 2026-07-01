@@ -404,3 +404,37 @@ From debugging sessions:
 - New bugs introduced: Near zero vs common
 
 **No shortcuts. No guessing. Systematic always wins.**
+
+---
+
+## Parallel Code Cleanup (Simplify)
+
+When the user says "simplify" or "clean up my changes", run three focused reviewers in parallel using `delegate_task` batch mode:
+
+### Phase 1 — Capture the diff
+```bash
+git diff                    # uncommitted changes
+git diff HEAD               # include staged
+git diff main...HEAD        # full branch diff
+```
+
+### Phase 2 — Launch 3 reviewers (parallel)
+Give each the COMPLETE diff + repo path. Each searches the codebase for evidence, reports `file:line → problem → fix`, ranks high/medium/low confidence.
+
+**Reviewer 1 — Code Reuse:** Duplicates of existing utilities, hand-rolled logic that existing helpers already do.
+**Reviewer 2 — Code Quality:** Redundant state, parameter sprawl, copy-paste-with-variation, leaky abstractions.
+**Reviewer 3 — Efficiency:** Unnecessary work, missed concurrency, hot-path bloat, TOCTOU patterns, memory leaks.
+
+### Phase 3 — Aggregate and apply
+Merge findings, dedup, discard false positives. Apply surviving fixes with `patch`/`write_file`. Run targeted tests on touched files.
+
+**Rules:** Max 3 reviewers. Give whole diff to each. Reviewers must search (not guess). Apply ≠ rewrite (scope to diff changes).
+
+## When to Use Each Approach
+
+| Situation | Approach |
+|-----------|----------|
+| Something is broken, find root cause | 4-phase debugging (above) |
+| Recent changes need cleanup | Parallel simplify (this section) |
+| Pre-commit quality gate | `requesting-code-review` skill |
+| Post-commit code review | `github` skill (PR review) |

@@ -1,0 +1,322 @@
+---
+name: cet-exam-pdf-extraction
+description: Extract structured content (word banks, passages, questions) from Chinese CET-4/6 exam PDFs using pymupdf. Handles format variations across years and publishers.
+tags: [pdf, cet, exam, english, china, extraction, pymupdf]
+triggers:
+  - 用户要求从PDF中提取四六级/CET考试内容
+  - 提取选词填空、阅读理解、听力等考试部分
+  - 处理六级/四级真题PDF文件
+---
+
+# CET Exam PDF Extraction
+
+## When to use
+- Extracting word banks (选词填空 Section A), passages, questions, or answers from CET-4/6 exam PDFs
+- Processing exam PDFs stored locally (common path: `题库/01六级历年真题及答案解析+听力音频/`)
+
+## Prerequisites
+```bash
+pip install pymupdf
+```
+
+## Directory structure pattern
+CET exam PDFs typically follow this structure:
+```
+<year>年<month>月CET6题+解+音频/
+├── 01、真题PDF版（推荐使用）/
+│   ├── <year>.<month>六级真题第1套.pdf
+│   ├── <year>.<month>六级真题第2套.pdf
+│   └── <year>.<month>六级真题第3套.pdf
+├── 02、真题word版/
+├── 03、答案解析/
+└── 04、听力音频/
+```
+
+## Key extraction pattern: Section A word bank (选词填空)
+
+### Step 1: Find Section A location
+The reading comprehension Section A can appear in two formats:
+
+**Format A** (2021 style): `Section A` appears BEFORE `Reading Comprehension`
+```
+Section A\s+Reading Comprehension
+```
+
+**Format B** (2022+ style): `Reading Comprehension` appears BEFORE `Section A`
+```
+Reading Comprehension.*?Section A
+```
+
+Use `re.DOTALL` flag for both patterns.
+
+### Step 2: Extract word list
+After locating Section A, find the word bank using this regex:
+```python
+word_pattern = r'([A-O0]\)[\'"]*\s*(\w+))'
+```
+
+**Critical notes:**
+- The letter `O` may be OCR'd as `0` (zero) — pattern handles both
+- Some PDFs have `K)' secondary` (extra apostrophe) — pattern handles this
+- Words may span across pages — extract from full document text, not single page
+
+### Step 3: Filter and deduplicate
+```python
+words = []
+for full_match, word in matches:
+    if len(word) > 2:  # Skip short fragments
+        words.append(word)
+
+# Deduplicate while preserving order
+unique_words = []
+for word in words:
+    if word not in unique_words:
+        unique_words.append(word)
+
+return unique_words[:15]  # Section A always has 15 words
+```
+
+## Pitfalls
+
+### P1: Third test suite may share content with second suite
+Many CET exams have 3 test suites, but the 3rd suite's reading section is often IDENTICAL to the 2nd suite. The PDF may say:
+```
+本套阅读词汇理解与第2套内容完全一样，因此在本套真题中不再重复出现。
+```
+When this happens, mark it as "(与第2套相同)" rather than reporting extraction failure.
+
+### P2: First-pass regex may match listening section options
+The listening section also uses A) B) C) D) format. If your extraction returns words like "Pour", "Network", "Prepare" (listening option fragments), you're matching the WRONG section. Solution: always search starting from `Reading Comprehension.*?Section A`, not from the beginning of the document.
+
+### P3: Some PDFs have only 1 page for 3rd suite
+The 3rd suite PDF may be a stub with only writing + translation (no reading section). Check `len(doc)` — if it's 1 page, skip it.
+
+### P4: OCR artifacts in word list
+Common OCR errors in word banks:
+- `K)' secondary` → should extract `secondary`
+- `0) threshold` → the `0` is actually `O`
+- `· J) safeguarded` → extra bullet point before letter
+
+## Full extraction script template
+
+```python
+import pymupdf
+import os
+import re
+
+def extract_section_a_words(pdf_path):
+    """Extract 15 word bank words from CET Section A cloze test."""
+    try:
+        doc = pymupdf.open(pdf_path)
+        full_text = ""
+        for i in range(len(doc)):
+            page = doc[i]
+            full_text += page.get_text() + "\n"
+        
+        # Find Section A in Reading Comprehension
+        patterns = [
+            r'Reading Comprehension.*?Section A',
+            r'Section A\s+Reading Comprehension',
+        ]
+        
+        section_a_pos = None
+        for pattern in patterns:
+            match = re.search(pattern, full_text, re.DOTALL)
+            if match:
+                section_a_pos = match.end()
+                break
+        
+        if not section_a_pos:
+            return None
+        
+        section_a_text = full_text[section_a_pos:]
+        
+        # Extract words
+        word_pattern = r'([A-O0]\)[\'"]*\s*(\w+))'
+        matches = re.findall(word_pattern, section_a_text)
+        
+        words = []
+        for full_match, word in matches:
+            if len(word) > 2:
+                words.append(word)
+        
+        # Deduplicate
+        unique_words = []
+        for word in words:
+            if word not in unique_words:
+                unique_words.append(word)
+        
+        return unique_words[:15]
+    except Exception as e:
+        return None
+
+# Batch processing
+def batch_extract(base_dir, years_dirs):
+    results = {}
+    for year, dir_name in years_dirs:
+        dir_path = os.path.join(base_dir, dir_name)
+        pdf_dir = os.path.join(dir_path, "01、真题PDF版（推荐使用）")
+        if not os.path.exists(pdf_dir):
+            pdf_dir = dir_path
+        
+        pdf_files = sorted([f for f in os.listdir(pdf_dir) if f.endswith('.pdf')])
+        for pdf_file in pdf_files:
+            pdf_path = os.path.join(pdf_dir, pdf_file)
+            words = extract_section_a_words(pdf_path)
+            if words:
+                # Determine suite number
+                if '第1套' in pdf_file:
+                    suite = '第1套'
+                elif '第2套' in pdf_file:
+                    suite = '第2套'
+                elif '第3套' in pdf_file:
+                    suite = '第3套'
+                else:
+                    suite = '未知'
+                key = f"{year} {suite}"
+                results[key] = words
+    return results
+```
+
+## Web fallback: Scrapling for missing years
+When local PDFs are missing (e.g., 2025 exams), try Scrapling:
+```bash
+pip install scrapling curl_cffi playwright browserforge patchright msgspec
+```
+
+Use `StealthyFetcher` for sites with anti-bot protection:
+```python
+from scrapling import StealthyFetcher
+fetcher = StealthyFetcher(auto_match=False)
+page = fetcher.fetch(url)
+text = page.get_all_text()
+```
+
+**Known working site:** `cet6.koolearn.com` (新东方在线) — has CET exam content but may be "更新中" (still updating) for recent exams.
+
+**Known blocked sites:** `kekenet.com`, `hjenglish.com` — have SSRF protection that blocks Scrapling.
+
+## Output format
+Write results to a markdown file organized by year and suite:
+```markdown
+## 2024年06月
+
+### 第1套
+word1, word2, word3, ..., word15
+
+### 第2套
+word1, word2, word3, ..., word15
+
+### 第3套
+（与第2套相同）
+```
+
+## Answer Explanation PDFs (答案解析) — Listening Synonym Replacement Analysis
+
+When analyzing answer explanation PDFs (答案解析) for listening comprehension synonym replacements:
+
+### CET-6 Listening Structure
+The listening section has THREE parts (not two — forgetting Section C is a common mistake):
+- **Section A** — Long conversations (长对话), Q1–Q8
+- **Section B** — Passages (短文), Q9–Q15
+- **Section C** — Lectures/Talks (讲座/讲话), Q16–Q25, labeled as Recording One / Recording Two / Recording Three
+
+Only analyze synonym replacements in these three sections. Ignore reading, writing, and translation.
+
+### Pre-requisite: PDF to txt Conversion
+Before analysis, convert all PDFs to txt using **docling** (Python API, NOT CLI — CLI has no `--gpu` flag):
+```python
+import os, warnings, logging
+warnings.filterwarnings("ignore")
+logging.disable(logging.CRITICAL)
+from docling.document_converter import DocumentConverter
+
+converter = DocumentConverter()
+pdf_dir = "/path/to/答案解析"
+txt_dir = "/path/to/txt_解析"
+os.makedirs(txt_dir, exist_ok=True)
+for pdf in sorted(os.listdir(pdf_dir)):
+    if not pdf.endswith('.pdf'): continue
+    txt = pdf.replace('.pdf', '.txt')
+    if os.path.exists(os.path.join(txt_dir, txt)):
+        print(f"Skip (exists): {pdf}", flush=True)
+        continue
+    result = converter.convert(os.path.join(pdf_dir, pdf))
+    with open(os.path.join(txt_dir, txt), 'w') as f:
+        f.write(result.document.export_to_markdown())
+    print(f"Done: {pdf}", flush=True)
+```
+- GPU is automatic via PyTorch — NO `--gpu` flag exists. Just ensure `torch.cuda.is_available()` is True.
+- Process **serially** (one file at a time) to avoid GPU OOM
+- Skip files that already have a corresponding txt in the output directory
+- Source dirs: `答案解析/` → `txt_解析/`, `原题/` → `txt_原题/`
+- Run conversion in background (`terminal background=true notify_on_complete=true`) while starting analysis on already-converted files
+- **Use heredoc format** for background Python scripts, NOT inline `-c`:
+  ```bash
+  python3 << 'PYEOF'
+  import os
+  # ... script content ...
+  PYEOF
+  ```
+  Inline `-c` with complex multi-line scripts can cause the process to hang silently (0% CPU, minimal memory) due to quoting/escaping issues. Heredoc avoids this entirely.
+
+### CRITICAL: Read files individually, do NOT grep
+**Do NOT write a script to regex-search for "同义" keywords.** The user explicitly requires:
+1. Use `read_file` to read each txt file one at a time
+2. Use AI semantic understanding to identify synonym replacement cases in context
+3. This catches nuanced phrasing ("选项是对原文的改写", "paraphrase", "换一种说法") that regex misses
+4. It also prevents false positives (e.g., reading comprehension "同义词辨析" is NOT a listening synonym case)
+
+**Pre-scan triage (allowed, NOT the same as grepping for extraction):**
+Use `search_files` with `output_mode="count"` to get keyword hit counts across all files. This tells you WHICH files to prioritize for reading, not which questions to extract. Example:
+```
+search_files(pattern="同义替换|同义转述|同义改写|同义复现", output_mode="count", path="txt_解析/")
+```
+This returns per-file counts. Files with 0 hits can be deprioritized. But you still MUST read each file with `read_file` and use semantic understanding — the count is triage, not extraction.
+
+**Parallel delegation for speed:**
+When there are 20+ files to process, use `delegate_task` with batch mode to dispatch 2-3 subagents that each handle a subset of files. Each subagent reads files and extracts findings. Combine results afterward. Beware API rate limits — if subagents fail with HTTP 429, fall back to sequential processing.
+
+### Synonym Markers to Look For (while reading, not grepping)
+- `同义转述` / `同义替换` — synonym paraphrase/replacement
+- `原词复现` — original word recurrence (exact match in option)
+- `同义改写` — synonym rewrite
+- `对应` — corresponds to (older format, 2015-2018)
+- `选项是对原文的改写/换一种说法` — option rephrases the original
+- `表述与此一致` / `意思一致` — "consistent with this" (weaker form, 2015-2016 era)
+- `C项表述与此意思一致` — older style that implies synonym replacement without using the term
+
+**Important:** Files from 2015-2018 often use `对应` or `表述与此一致` instead of explicit `同义替换/同义转述`. These still count as synonym replacement when the explanation describes how an option rephrases the original audio text. Use semantic judgment.
+
+### Listening vs. Reading Section Boundary
+The listening section is always in **Part II** (Listening Comprehension). Reading is in **Part III** (Reading Comprehension).
+- If a file says "由于多题多卷...听力试题与第二套真题的一致...本套试卷不再提供听力部分" — the file has NO listening section. Skip it.
+- Some files jump directly from Part I (Writing) to Part III (Reading) — these lack listening sections entirely.
+- **Q1-Q25 are listening; Q26-Q35 are cloze/word bank; Q36+ are reading.** Don't confuse reading Q36-Q45 synonym markers (题干是对原文的同义转述) with listening questions.
+- "第3套" often shares listening content with "第2套" — check for "特别说明" notes.
+
+### Pattern
+Answer explanations reference numbered audio sentences like `句(1-1)` or `句(5)`, then explain: `选项中的X是录音中Y的同义转述`. The original English sentence is in the audio transcript section above.
+
+### Key Limitation
+Answer explanation PDFs do NOT contain full 4 options (A/B/C/D). They only mention the correct answer. To get complete options, you need the original test paper PDFs (真题PDF版).
+
+### Workflow
+1. Convert PDFs to txt with docling (Python API, GPU automatic, serial, skip existing) — run in background
+2. While conversion runs, start processing already-converted txt files
+3. Use `read_file` to read each txt file — do NOT grep
+4. Identify listening sections: Section A (Q1–Q8), Section B (Q9–Q15), Section C (Q16–Q25)
+5. For each question's answer explanation, use semantic understanding to detect synonym replacement
+6. Extract: exam date + suite number, question number, section, English key sentence, correct answer
+7. Match back to original test paper txt to get full A/B/C/D options
+8. **Write each finding to the output file immediately** — do NOT accumulate in memory. Use `patch` to append after each file's analysis. The user will ask "why aren't you writing?" if you delay.
+
+### Prompt-writing note
+When the user asks you to **write a prompt** for this task (not execute it), the prompt should cover all steps above explicitly — do not assume the executor knows the listening structure, the file naming conventions, or the read-not-grep requirement.
+
+## Support files
+- `scripts/extract_cet_words.py` — ready-to-run extraction script (single PDF or batch mode)
+- `references/scrapling-notes.md` — notes on using Scrapling for web fallback when PDFs are missing
+- `references/synonym-replacement-prompt-template.md` — prompt template for the listening synonym replacement extraction task (use when user asks to write a prompt, not execute)
+- `references/docling-pitfalls.md` — garbled output from certain year PDFs, file naming mapping between 解析/原题 directories, missing original files, background process hangs, nvidia-smi in WSL
+- `references/listening-synonym-coverage.md` — which years/sets have listening synonym replacements and which don't (based on analysis of all 2015-2024 files)

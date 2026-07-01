@@ -95,6 +95,31 @@ python database/checkout/check_replace_object_types.py  # dry-run
 python database/checkout/check_replace_object_types.py --apply  # apply
 ```
 
+## Physics Dataset Validation
+
+When working with physics simulation datasets, additional validation is needed:
+
+### Validation Checks
+1. **Frame completeness:** Verify all expected frames exist for each scene
+2. **Object consistency:** Check object counts match metadata across frames
+3. **Physics plausibility:** Detect impossible states (objects floating, passing through each other)
+4. **Temporal continuity:** Verify smooth transitions between frames (no sudden jumps)
+5. **Label correctness:** Ensure object types, positions, velocities match expected ranges
+
+### Using tbparse for Training Curve Analysis
+```python
+from tbparse import SummaryReader
+reader = SummaryReader("./runs/my_run")
+df = reader.scalars
+# Analyze loss curves, detect overfitting, spikes, plateaus
+```
+
+### Common Physics Dataset Issues
+- **Empty directories:** Scene directories with no data files
+- **Missing frames:** Gaps in frame sequence (e.g., frame 0-10 but missing 11-15)
+- **Type mismatches:** Object type in metadata doesn't match actual object shape
+- **Duplicate scenes:** Same scene generated twice with different seeds
+
 ## Pitfalls
 - **Don't forget video.json**: Contains metadata with type names in level_name, subtask, main_variable fields
 - **Check all scenes**: Type might only appear in specific scenes (e.g., obstacle only in S8/L5)

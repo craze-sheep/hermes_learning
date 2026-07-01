@@ -161,3 +161,28 @@ read_file(path="/home/user/projects/project-a/package.json", limit=15)
 
 # Repeat for each project...
 ```
+
+## Interactive Directory Cleanup
+
+When the user says a directory is "too messy" or "杂" and wants it cleaned up:
+
+### Workflow
+1. **Survey first:** `du -sh`, `ls -la`, `find` for subdirectories. Present summary.
+2. **Go through items ONE BY ONE:** For each item, present name/size, what it does (read first 10-20 lines), whether it's needed, ask "delete or keep?" via `clarify`.
+3. **Execute deletions immediately** after each approval (don't batch at end).
+4. **For large subdirectories**, ask about the parent first, then drill in if user wants to keep it.
+5. **Final summary:** What deleted (with sizes), what kept, total space saved, current tree view.
+
+### Rules
+- **NEVER batch-delete without asking** — even `__pycache__` gets a question
+- **Read file headers to explain purpose** — don't guess
+- **Compare before recommending deletion** of similar items (diff `ai_model/` vs `ai_model_副本/`)
+- **Present sub-items within kept directories** — keeping parent ≠ keeping everything inside
+- **Don't skip "obvious" items** — user wants the full tour
+
+### Research Quality Assessment
+When cleaning research/knowledge assets:
+1. Curated notes (small, structured) = high-value → keep
+2. Raw code clones, PDFs, caches = usually replaceable → recommend delete
+3. Read 3-4 representative files before assessing quality
+4. Don't recommend deleting knowledge assets without reading them first

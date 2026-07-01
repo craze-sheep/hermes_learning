@@ -38,6 +38,7 @@ Umbrella skill for WSL2 + Windows host operations: environment audits, GPU/CUDA/
 - Use conda for Python project isolation; source `conda.sh` before `conda activate`.
 - **Miniconda npm global installs**: When system npm is missing or broken, use miniconda's npm with explicit prefix: `~/miniconda3/bin/npm config set prefix ~/miniconda3 && ~/miniconda3/bin/npm install -g <package>`. Binary lands in `~/miniconda3/bin/`. This is needed for tools like cc-connect, claude-code, codex, opencode when installed via npm in a conda-managed WSL env.
 - **Miniconda binaries not in non-interactive PATH**: Binaries in `~/miniconda3/bin/` are only in PATH when conda is activated (login shell). Background services, cc-connect agent spawning, and `bash -c` commands won't find them. Always use absolute paths in config files: `command = "/home/user/miniconda3/bin/tool"`. Verify with `bash -c "which tool"` not `bash -l -c`.
+- **Access Windows npm from WSL**: Use `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "npm ..."`. This is needed for installing/managing Windows-side npm global packages (codex, claude-code, opencode) from WSL. WSL's own npm is a separate installation.
 - For pip commands in CJK-path projects, run from `/tmp` or another ASCII path to avoid terminal watchdog/path issues.
 - For quick server restarts, check ports and TIME_WAIT; bind to `127.0.0.1` or choose a new port when needed.
 - WSLg shared-memory corruption is fixed by Windows `wsl --shutdown`, not by app-level GL flags.
@@ -74,3 +75,7 @@ tasklist.exe | grep -i app
 ## Support Files
 
 Absorbed narrow skills are preserved in `references/` by original name. Load them for detailed checklists, command recipes, and case-specific troubleshooting.
+
+- `references/ai-tools-cleanup-reinstall.md` — Full cleanup + reinstall workflow for codex, claude-code, opencode, and hermes on Windows from WSL (file locations, commands, timeout pitfalls, cc-switch config recovery).
+- `references/wsl-windows-hermes-sync.md` — Syncing MCP servers, skills, env vars, and CLI tools (codegraph, docling) from WSL Hermes to Windows Hermes. Includes cc-switch proxy architecture and config recovery from cc-switch SQLite DB.
+- `references/vscode-remote-troubleshooting.md` — Duplicate Pylance/LSP instances, reading extension logs, Codex auth requirements, proxy diagnosis in WSL.

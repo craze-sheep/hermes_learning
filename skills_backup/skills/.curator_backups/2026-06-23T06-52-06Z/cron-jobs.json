@@ -1,0 +1,93 @@
+{
+  "jobs": [
+    {
+      "id": "407dccfbe2c3",
+      "name": "memory-cleanup-monthly",
+      "prompt": "\u6267\u884c\u8bb0\u5fc6\u6e05\u7406\u811a\u672c\uff1abash /home/lzy/.hermes/scripts/cleanup_memory.sh",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 4 1 * *",
+        "display": "0 4 1 * *"
+      },
+      "schedule_display": "0 4 1 * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-21T22:41:29.519185+08:00",
+      "next_run_at": "2026-07-01T04:00:00+08:00",
+      "last_run_at": "2026-06-01T04:02:01.523226+08:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": "delivery error: Weixin send failed: iLink sendmessage error: ret=None errcode=-14 errmsg=session timeout",
+      "deliver": "origin",
+      "origin": {
+        "platform": "weixin",
+        "chat_id": "o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat",
+        "chat_name": null,
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null
+    },
+    {
+      "id": "198e7e841282",
+      "name": "memory-backup-github",
+      "prompt": "\u6267\u884c\u8bb0\u5fc6\u5907\u4efd\u811a\u672c\uff1abash /home/lzy/.hermes/scripts/backup_to_github.sh",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 3 * * *",
+        "display": "0 3 * * *"
+      },
+      "schedule_display": "0 3 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 7
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-30T01:28:42.697500+08:00",
+      "next_run_at": "2026-06-24T03:00:00+08:00",
+      "last_run_at": "2026-06-19T03:02:11.695728+08:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: Connection error.",
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "weixin",
+        "chat_id": "o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat",
+        "chat_name": null,
+        "thread_id": null
+      },
+      "enabled_toolsets": [
+        "terminal"
+      ],
+      "workdir": null,
+      "profile": null
+    }
+  ],
+  "updated_at": "2026-06-23T13:43:47.532403+08:00"
+}

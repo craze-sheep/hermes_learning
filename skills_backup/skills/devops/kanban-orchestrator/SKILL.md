@@ -3,6 +3,7 @@ name: kanban-orchestrator
 description: Decomposition playbook + anti-temptation rules for an orchestrator profile routing work through Kanban. The "don't do the work yourself" rule and the basic lifecycle are auto-injected into every kanban worker's system prompt; this skill is the deeper playbook when you're specifically playing the orchestrator role.
 version: 3.0.0
 platforms: [linux, macos, windows]
+environments: [kanban]
 metadata:
   hermes:
     tags: [kanban, multi-agent, orchestration, routing]
@@ -201,6 +202,79 @@ How it behaves:
 When to use it: long, multi-step, or "keep going until X is true" cards. When NOT to: cheap one-shot cards (translation of a single string, a quick lookup) — the judge overhead isn't worth it, and the dispatcher's existing retry/circuit-breaker already handles transient worker failures.
 
 Write the body as **explicit acceptance criteria** — the judge is only as good as the goal text. "Translate the README" is weaker than "Translate every section of the README to French; no English sentences remain."
+
+## Worker Playbook — Pitfalls and Edge Cases
+
+> The worker **lifecycle** (orient → work → heartbeat → block/complete) is auto-injected via `KANBAN_GUIDANCE`. This section covers the deeper detail: workspace handling, good handoff shapes, retry diagnostics.
+
+### Workspace handling
+
+| Kind | What it is | How to work |
+|---|---|---|
+| `scratch` | Fresh tmp dir, yours alone | Read/write freely; it gets GC'd when the task is archived. |
+| `dir:<path>` | Shared persistent directory | Other runs will read what you write. Treat it like long-lived state. |
+| `worktree` | Git worktree at the resolved path | If `.git` doesn't exist, run `git worktree add <path> ${HERMES_KANBAN_BRANCH:-wt/$HERMES_KANBAN_TASK}` from the main repo first. |
+
+### Good summary + metadata shapes
+
+**Coding task:**
+```python
+kanban_complete(
+    summary="shipped rate limiter — token bucket, keys on user_id with IP fallback, 14 tests pass",
+    metadata={
+        "changed_files": ["rate_limiter.py", "tests/test_rate_limiter.py"],
+        "tests_run": 14, "tests_passed": 14,
+        "decisions": ["user_id primary, IP fallback for unauthenticated requests"],
+    },
+)
+```
+
+**Coding task needing human review** — block instead of complete, with `reason` prefixed `review-required:`:
+```python
+kanban_comment(body="review-required handoff:\n" + json.dumps({...}, indent=2))
+kanban_block(reason="review-required: rate limiter shipped, 14/14 tests pass — needs eyes on the user_id/IP fallback choice before merging")
+```
+
+**Research task:**
+```python
+kanban_complete(
+    summary="3 competing libraries reviewed; vLLM wins on throughput",
+    metadata={"sources_read": 12, "recommendation": "vLLM"},
+)
+```
+
+### Claiming cards you actually created
+
+Pass `created_cards` on `kanban_complete` only for ids you captured from successful `kanban_create` return values. Phantom ids block completion.
+
+### Block reasons that get answered fast
+
+Bad: `"stuck"`. Good: one sentence naming the specific decision needed. Leave longer context as a comment.
+
+### Heartbeats worth sending
+
+Good: `"epoch 12/50, loss 0.31"`. Bad: `"still working"`. Every few minutes max.
+
+### Retry scenarios
+
+- `outcome: "timed_out"` — chunk the work or shorten it
+- `outcome: "crashed"` — OOM, reduce memory footprint
+- `outcome: "spawn_failed"` — profile config issue, ask human via `kanban_block`
+- `outcome: "blocked"` — previous attempt blocked; check unblock comment
+
+### Worker do-NOTs
+
+- Do NOT call `delegate_task` as substitute for `kanban_create`
+- Do NOT call `clarify` — use `kanban_comment` + `kanban_block` instead
+- Do NOT modify files outside `$HERMES_KANBAN_WORKSPACE`
+- Do NOT create follow-up tasks assigned to yourself
+- Do NOT complete a task you didn't finish — block it instead
+
+### CLI fallback
+
+Every tool has a CLI equivalent: `kanban_show` ↔ `hermes kanban show <id> --json`, etc. Use tools from inside an agent; the CLI exists for the human at the terminal.
+
+---
 
 ## Recovering stuck workers
 

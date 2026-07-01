@@ -1,6 +1,6 @@
 ---
 name: ascii-art
-description: "ASCII art: pyfiglet, cowsay, boxes, image-to-ascii."
+description: "ASCII art and video: text art (pyfiglet, cowsay, boxes), image-to-ascii, video-to-ascii conversion."
 version: 4.0.0
 author: 0xbyt4, Hermes Agent
 license: MIT
@@ -308,6 +308,33 @@ When tools above don't have what's needed, generate ASCII art directly using the
 - Max width: 60 characters per line (terminal-safe)
 - Max height: 15 lines for banners, 25 for scenes
 - Monospace only: output must render correctly in fixed-width fonts
+
+## Tool 10: ASCII Video Production
+
+Convert video/audio/images into colored ASCII character video (MP4, GIF). Full production pipeline with audio-reactive visualizers, generative animations, and shader effects.
+
+**Modes:** Video-to-ASCII, Audio-reactive, Generative, Hybrid, Lyrics/text, TTS narration.
+
+**Stack:** Python 3.10+ + NumPy + SciPy + Pillow + ffmpeg. No GPU required.
+
+**Pipeline:** `INPUT → ANALYZE → SCENE_FN → TONEMAP → SHADE → ENCODE`
+
+**Quick start:**
+```python
+# Video-to-ASCII conversion
+# 1. Load video frames with ffmpeg
+# 2. Map luminance to character density ramp
+# 3. Apply color from source frames
+# 4. Encode output with ffmpeg pipe
+```
+
+**Key principles:**
+- Use adaptive `tonemap()` (not linear multipliers) for brightness
+- Per-section variation: different effects, palettes, colors per scene
+- Dense, layered output — never flat black backgrounds
+- Creative standard: cinema-quality, not generic ASCII art
+
+**Detailed references:** See `references/architecture.md` (grids, palettes, colors), `references/effects.md` (building blocks), `references/shaders.md` (post-processing), `references/scenes.md` (scene design), `references/inputs.md` (audio/video analysis), `references/composition.md` (blend modes, tonemap), `references/optimization.md` (performance), `references/troubleshooting.md` (common issues).
 
 ## Decision Flow
 

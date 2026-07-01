@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/home/lzy/.hermes/logs/curator/20260608-084030",
-  "last_run_at": "2026-06-08T08:40:30.674842+00:00",
-  "last_run_duration_seconds": 733.680395,
-  "last_run_summary": "auto: no changes; llm: All 9 skills properly archived with full directory structures intact. Here's the final summary:\n\n---\n\n## Curator Consolidation Pass — Summary\n\n### Clusters Processed\n\n**1. B2B Multi-Agent System** (3 skills → 1 umbrella)\n- Created `b2b-mult…\narchived 9 skill(s):\n  • codebase-inspection → github-repo-management\n  • hermes-agent-skill-authoring → hermes-agent\n  • plan → writing-plans\n  • b2b-supervisor-executor — pruned (stale)\n  • b2b-task-audit — pruned (stale)\n  • b2b-team-worker — pruned (stale)\n  • debugging-hermes-tui-commands — pruned (stale)\n  • node-inspect-debugger — pruned (stale)\n  • python-debugpy — pruned (stale)\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin github-repo-management",
-  "last_run_summary_shown_at": "2026-05-21T03:50:08.048701+00:00",
+  "last_report_path": "/home/lzy/.hermes/logs/curator/20260701-100428",
+  "last_run_at": "2026-07-01T10:04:28.189163+00:00",
+  "last_run_duration_seconds": 10.711483,
+  "last_run_summary": "auto: 4 marked stale; llm: no change",
+  "last_run_summary_shown_at": "2026-06-08T08:40:30.674842+00:00",
   "paused": false,
-  "run_count": 2
+  "run_count": 5
 }

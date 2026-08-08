@@ -63,15 +63,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 11
+        "completed": 12
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-30T01:28:42.697500+08:00",
-      "next_run_at": "2026-08-08T03:00:00+08:00",
-      "last_run_at": "2026-07-22T03:00:54.626032+08:00",
+      "next_run_at": "2026-08-09T03:00:00+08:00",
+      "last_run_at": "2026-08-08T03:01:14.703817+08:00",
       "last_status": "error",
       "last_error": "RuntimeError: Error code: 401 - {'error': {'message': 'Invalid API Key', 'param': 'Please provide valid API Key', 'code': '401', 'type': 'invalid_key'}}",
       "last_delivery_error": null,
@@ -89,5 +89,5 @@
       "profile": null
     }
   ],
-  "updated_at": "2026-08-07T16:04:39.118582+08:00"
+  "updated_at": "2026-08-08T03:01:14.704746+08:00"
 }

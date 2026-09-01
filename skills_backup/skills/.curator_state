@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/home/lzy/.hermes/logs/curator/20260810-085910",
-  "last_run_at": "2026-08-10T08:59:10.978860+00:00",
-  "last_run_duration_seconds": 91.627483,
-  "last_run_summary": "auto: no changes; llm: no change",
+  "last_report_path": "/home/lzy/.hermes/logs/curator/20260828-070935",
+  "last_run_at": "2026-08-28T07:09:35.297965+00:00",
+  "last_run_duration_seconds": 139.418516,
+  "last_run_summary": "auto: 3 archived; llm: API call failed after 3 retries: Connection error.",
   "last_run_summary_shown_at": "2026-06-08T08:40:30.674842+00:00",
   "paused": false,
-  "run_count": 9
+  "run_count": 11
 }

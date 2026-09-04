@@ -247,7 +247,7 @@
     "view_count": 22
   },
   "chinese-platform-research": {
-    "archived_at": null,
+    "archived_at": "2026-09-04T07:34:20.946434+00:00",
     "created_at": "2026-05-27T16:47:08.665421+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-05-27T16:47:52.847043+00:00",
@@ -255,7 +255,7 @@
     "last_viewed_at": "2026-05-29T14:02:46.787483+00:00",
     "patch_count": 3,
     "pinned": false,
-    "state": "stale",
+    "state": "archived",
     "use_count": 31,
     "view_count": 3
   },
@@ -325,7 +325,7 @@
     "view_count": 1
   },
   "codegraph-setup": {
-    "archived_at": null,
+    "archived_at": "2026-09-04T07:34:20.973720+00:00",
     "created_at": "2026-06-01T07:08:15.276257+00:00",
     "created_by": "agent",
     "last_patched_at": null,
@@ -333,7 +333,7 @@
     "last_viewed_at": null,
     "patch_count": 0,
     "pinned": false,
-    "state": "stale",
+    "state": "archived",
     "use_count": 0,
     "view_count": 0
   },
@@ -754,7 +754,7 @@
     "view_count": 0
   },
   "ielts-speaking-prep": {
-    "archived_at": null,
+    "archived_at": "2026-09-04T07:34:20.985598+00:00",
     "created_at": "2026-05-29T14:03:33.511364+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-05-29T15:15:42.704667+00:00",
@@ -762,7 +762,7 @@
     "last_viewed_at": "2026-06-02T01:23:15.081865+00:00",
     "patch_count": 20,
     "pinned": false,
-    "state": "stale",
+    "state": "archived",
     "use_count": 11,
     "view_count": 11
   },

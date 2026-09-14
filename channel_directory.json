@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-05T02:57:50.844469",
+  "updated_at": "2026-09-15T02:58:07.409227",
   "platforms": {
     "telegram": [],
     "discord": [],
@@ -17,14 +17,7 @@
     "feishu": [],
     "wecom": [],
     "wecom_callback": [],
-    "weixin": [
-      {
-        "id": "o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat",
-        "name": "o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat",
-        "type": "dm",
-        "thread_id": null
-      }
-    ],
+    "weixin": [],
     "bluebubbles": [],
     "qqbot": [],
     "yuanbao": [],

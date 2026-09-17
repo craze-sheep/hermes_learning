@@ -1,0 +1,15 @@
+[
+  {
+    "pid": 25719,
+    "create_time": 1789671607.5,
+    "purpose": "mcp-helper",
+    "install": "22b5ff4665f0",
+    "spawner_pid": 323,
+    "spawner_create": 1789661423.55,
+    "registered_at": 1789671608.19347,
+    "argv": "node /home/lzy/miniconda3/bin/npx -y @modelcontextprotocol/server-time",
+    "host": "",
+    "port": null,
+    "profile": ""
+  }
+]

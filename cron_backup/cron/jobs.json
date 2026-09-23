@@ -63,17 +63,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 30
+        "completed": 31
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-30T01:28:42.697500+08:00",
-      "next_run_at": "2026-09-19T03:00:00+08:00",
-      "last_run_at": "2026-09-16T03:00:58.596877+08:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: Error code: 401 - {'error': {'message': 'Invalid API Key', 'param': 'Please provide valid API Key', 'code': '401', 'type': 'invalid_key'}}",
+      "next_run_at": "2026-09-24T03:00:00+08:00",
+      "last_run_at": "2026-09-18T03:01:10.383974+08:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -88,16 +88,17 @@
       "workdir": null,
       "profile": null,
       "last_dispatch": {
-        "scheduled_at": "2026-09-18T03:00:00+08:00",
-        "dispatched_at": "2026-09-18T03:00:15.077955+08:00",
-        "lateness_seconds": 15.1,
-        "kind": "on_time"
+        "scheduled_at": "2026-09-19T03:00:00+08:00",
+        "dispatched_at": "2026-09-23T10:28:04.802701+08:00",
+        "lateness_seconds": 372484.8,
+        "kind": "catch_up"
       },
       "fire_claim": {
-        "at": "2026-09-18T03:00:16.482705+08:00",
-        "by": "LAPTOP-B848KS1L:323:6d2296b992b9413599b4345f11822198"
-      }
+        "at": "2026-09-23T10:30:58.157486+08:00",
+        "by": "LAPTOP-B848KS1L:312:344f20eeee384f289f0923f711125aa0"
+      },
+      "failure_streak": 0
     }
   ],
-  "updated_at": "2026-09-18T03:00:16.483521+08:00"
+  "updated_at": "2026-09-23T10:30:58.158235+08:00"
 }

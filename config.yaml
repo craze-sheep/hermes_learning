@@ -633,29 +633,29 @@ mcp_servers:
     enabled: true
     command: /home/lzy/miniconda3/bin/node
     args:
-      - /home/lzy/.hermes/mcp-holographic/index.js
+    - /home/lzy/.hermes/mcp-holographic/index.js
   sequential-thinking:
     enabled: true
     command: npx
     args:
-      - -y
-      - '@modelcontextprotocol/server-sequential-thinking'
+    - -y
+    - '@modelcontextprotocol/server-sequential-thinking'
   fetch:
     enabled: true
     command: uvx
     args:
-      - mcp-server-fetch
+    - mcp-server-fetch
   context7:
     enabled: true
     command: npx
     args:
-      - -y
-      - '@upstash/context7-mcp'
+    - -y
+    - '@upstash/context7-mcp'
   codegraph:
     command: codegraph
     args:
-      - serve
-      - --mcp
+    - serve
+    - --mcp
     timeout: 120
     connect_timeout: 60
     enabled: true
@@ -663,14 +663,14 @@ mcp_servers:
     enabled: true
     command: npx
     args:
-      - -y
-      - '@modelcontextprotocol/server-memory'
+    - -y
+    - '@modelcontextprotocol/server-memory'
   time:
     enabled: true
     command: npx
     args:
-      - -y
-      - '@modelcontextprotocol/server-time'
+    - -y
+    - '@modelcontextprotocol/server-time'
 known_plugin_toolsets:
   cli:
     - spotify

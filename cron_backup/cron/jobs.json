@@ -20,18 +20,18 @@
       "schedule_display": "0 4 1 * *",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 2
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-21T22:41:29.519185+08:00",
-      "next_run_at": "2026-10-01T04:00:00+08:00",
-      "last_run_at": "2026-06-01T04:02:01.523226+08:00",
-      "last_status": "ok",
-      "last_error": null,
-      "last_delivery_error": "delivery error: Weixin send failed: iLink sendmessage error: ret=None errcode=-14 errmsg=session timeout",
+      "next_run_at": "2026-11-01T04:00:00+08:00",
+      "last_run_at": "2026-10-15T00:46:50.028727+08:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202610141646200706179788268d9d6gTow521a)",
+      "last_delivery_error": "live adapter send failed: iLink sendmessage rate limited; cooldown active for 30.0s; live adapter delivery to weixin:o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat failed: iLink sendmessage rate limited; cooldown active for 30.0s; delivery error: Weixin send failed: iLink sendmessage rate limited; cooldown active for 30.0s (target weixin:o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat)",
       "deliver": "origin",
       "origin": {
         "platform": "weixin",
@@ -41,7 +41,15 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "profile": null
+      "profile": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-10-01T04:00:00+08:00",
+        "dispatched_at": "2026-10-15T00:44:51.612575+08:00",
+        "lateness_seconds": 1197891.6,
+        "kind": "catch_up"
+      },
+      "fire_claim": null,
+      "failure_streak": 1
     },
     {
       "id": "198e7e841282",
@@ -63,17 +71,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 31
+        "completed": 46
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-30T01:28:42.697500+08:00",
-      "next_run_at": "2026-09-24T03:00:00+08:00",
-      "last_run_at": "2026-09-18T03:01:10.383974+08:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-10-22T03:00:00+08:00",
+      "last_run_at": "2026-10-21T03:00:54.736391+08:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202610201900535063950278268d9d6MBkaWXOd)",
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -88,17 +96,14 @@
       "workdir": null,
       "profile": null,
       "last_dispatch": {
-        "scheduled_at": "2026-09-19T03:00:00+08:00",
-        "dispatched_at": "2026-09-23T10:28:04.802701+08:00",
-        "lateness_seconds": 372484.8,
-        "kind": "catch_up"
+        "scheduled_at": "2026-10-21T03:00:00+08:00",
+        "dispatched_at": "2026-10-21T03:00:21.493983+08:00",
+        "lateness_seconds": 21.5,
+        "kind": "on_time"
       },
-      "fire_claim": {
-        "at": "2026-09-23T10:30:58.157486+08:00",
-        "by": "LAPTOP-B848KS1L:312:344f20eeee384f289f0923f711125aa0"
-      },
-      "failure_streak": 0
+      "fire_claim": null,
+      "failure_streak": 14
     }
   ],
-  "updated_at": "2026-09-23T10:30:58.158235+08:00"
+  "updated_at": "2026-10-21T03:01:01.165671+08:00"
 }

@@ -1,0 +1,101 @@
+{
+  "jobs": [
+    {
+      "id": "407dccfbe2c3",
+      "name": "memory-cleanup-monthly",
+      "prompt": "执行记忆清理脚本：bash /home/lzy/.hermes/scripts/cleanup_memory.sh",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 4 1 * *",
+        "display": "0 4 1 * *"
+      },
+      "schedule_display": "0 4 1 * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-21T22:41:29.519185+08:00",
+      "next_run_at": "2026-10-01T04:00:00+08:00",
+      "last_run_at": "2026-06-01T04:02:01.523226+08:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": "delivery error: Weixin send failed: iLink sendmessage error: ret=None errcode=-14 errmsg=session timeout",
+      "deliver": "origin",
+      "origin": {
+        "platform": "weixin",
+        "chat_id": "o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat",
+        "chat_name": null,
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null
+    },
+    {
+      "id": "198e7e841282",
+      "name": "memory-backup-github",
+      "prompt": "执行记忆备份脚本：bash /home/lzy/.hermes/scripts/backup_to_github.sh",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 3 * * *",
+        "display": "0 3 * * *"
+      },
+      "schedule_display": "0 3 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 39
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-30T01:28:42.697500+08:00",
+      "next_run_at": "2026-10-01T03:00:00+08:00",
+      "last_run_at": "2026-09-30T10:23:58.240904+08:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202609300223556335680888268d9d6XFRskafA)",
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "weixin",
+        "chat_id": "o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat",
+        "chat_name": null,
+        "thread_id": null
+      },
+      "enabled_toolsets": [
+        "terminal"
+      ],
+      "workdir": null,
+      "profile": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-30T03:00:00+08:00",
+        "dispatched_at": "2026-09-30T10:23:16.540752+08:00",
+        "lateness_seconds": 26596.5,
+        "kind": "catch_up"
+      },
+      "fire_claim": null,
+      "failure_streak": 7
+    }
+  ],
+  "updated_at": "2026-09-30T10:23:58.302649+08:00"
+}

@@ -71,17 +71,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 47
+        "completed": 48
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-30T01:28:42.697500+08:00",
-      "next_run_at": "2026-10-23T03:00:00+08:00",
-      "last_run_at": "2026-10-22T09:25:46.431454+08:00",
+      "next_run_at": "2026-10-24T03:00:00+08:00",
+      "last_run_at": "2026-10-23T03:00:52.248006+08:00",
       "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202610220125458335360668268d9d6EewEtiJD)",
+      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202610221900491131019338268d9d6nNKfcvxs)",
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -96,14 +96,14 @@
       "workdir": null,
       "profile": null,
       "last_dispatch": {
-        "scheduled_at": "2026-10-22T03:00:00+08:00",
-        "dispatched_at": "2026-10-22T09:25:01.766747+08:00",
-        "lateness_seconds": 23101.8,
-        "kind": "catch_up"
+        "scheduled_at": "2026-10-23T03:00:00+08:00",
+        "dispatched_at": "2026-10-23T03:00:15.930739+08:00",
+        "lateness_seconds": 15.9,
+        "kind": "on_time"
       },
       "fire_claim": null,
-      "failure_streak": 15
+      "failure_streak": 16
     }
   ],
-  "updated_at": "2026-10-22T09:25:46.523843+08:00"
+  "updated_at": "2026-10-23T03:00:52.470883+08:00"
 }

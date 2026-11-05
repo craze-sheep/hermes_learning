@@ -20,17 +20,17 @@
       "schedule_display": "0 4 1 * *",
       "repeat": {
         "times": null,
-        "completed": 2
+        "completed": 3
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-21T22:41:29.519185+08:00",
-      "next_run_at": "2026-11-01T04:00:00+08:00",
-      "last_run_at": "2026-10-15T00:46:50.028727+08:00",
+      "next_run_at": "2026-12-01T04:00:00+08:00",
+      "last_run_at": "2026-11-02T17:26:01.064513+08:00",
       "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202610141646200706179788268d9d6gTow521a)",
+      "last_error": "RuntimeError: HTTP 401: 无效的令牌 (request id: 202611020925025606968828268d9d6RIc4t3gX)",
       "last_delivery_error": "live adapter send failed: iLink sendmessage rate limited; cooldown active for 30.0s; live adapter delivery to weixin:o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat failed: iLink sendmessage rate limited; cooldown active for 30.0s; delivery error: Weixin send failed: iLink sendmessage rate limited; cooldown active for 30.0s (target weixin:o9cq80-nMdaqz4M3Xe4Ba17i9wX0@im.wechat)",
       "deliver": "origin",
       "origin": {
@@ -43,13 +43,13 @@
       "workdir": null,
       "profile": null,
       "last_dispatch": {
-        "scheduled_at": "2026-10-01T04:00:00+08:00",
-        "dispatched_at": "2026-10-15T00:44:51.612575+08:00",
-        "lateness_seconds": 1197891.6,
+        "scheduled_at": "2026-11-01T04:00:00+08:00",
+        "dispatched_at": "2026-11-02T17:23:56.759690+08:00",
+        "lateness_seconds": 134636.8,
         "kind": "catch_up"
       },
       "fire_claim": null,
-      "failure_streak": 1
+      "failure_streak": 2
     },
     {
       "id": "198e7e841282",
@@ -71,17 +71,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 52
+        "completed": 58
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-30T01:28:42.697500+08:00",
-      "next_run_at": "2026-10-29T03:00:00+08:00",
-      "last_run_at": "2026-10-28T03:01:00.364271+08:00",
+      "next_run_at": "2026-11-06T03:00:00+08:00",
+      "last_run_at": "2026-11-05T03:02:20.140537+08:00",
       "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Invalid token (request id: 202610271900584969504858268d9d6aWUNiOYO)",
+      "last_error": "RuntimeError: Connection error.",
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -96,14 +96,14 @@
       "workdir": null,
       "profile": null,
       "last_dispatch": {
-        "scheduled_at": "2026-10-28T03:00:00+08:00",
-        "dispatched_at": "2026-10-28T03:00:23.185476+08:00",
-        "lateness_seconds": 23.2,
+        "scheduled_at": "2026-11-05T03:00:00+08:00",
+        "dispatched_at": "2026-11-05T03:00:19.964990+08:00",
+        "lateness_seconds": 20.0,
         "kind": "on_time"
       },
       "fire_claim": null,
-      "failure_streak": 20
+      "failure_streak": 26
     }
   ],
-  "updated_at": "2026-10-28T03:01:00.496696+08:00"
+  "updated_at": "2026-11-05T03:02:20.277789+08:00"
 }
